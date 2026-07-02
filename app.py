@@ -7,6 +7,7 @@ The simulation background task is started during application startup
 via the lifespan context manager.
 """
 
+import os
 import asyncio
 import hashlib
 from pathlib import Path
@@ -76,7 +77,8 @@ async def auth_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-app.add_middleware(SessionMiddleware, secret_key="capstone-secret-key-2026")
+SECRET_KEY = os.environ.get("SECRET_KEY", "capstone-secret-key-2026")
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 @app.get("/login", response_class=HTMLResponse)

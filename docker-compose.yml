@@ -1,0 +1,22 @@
+services:
+  sistema-experto:
+    build: .
+    container_name: sistema-experto
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-capstone-secret-key-docker-2026}
+      - TZ=America/Lima
+    volumes:
+      - data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3.13", "-c", "import urllib.request; exit(0 if urllib.request.urlopen('http://localhost:8000/api/debug').status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  data:
+    name: sistema-experto-data
