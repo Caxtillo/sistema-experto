@@ -101,6 +101,13 @@ const STATUS_MAP = {
     low: { cls: 'badge-low', label: 'VERDE', color: '#22c55e' },
 };
 const STATUS_ORDER = { high: 3, medium: 2, low: 1 };
+
+function simBadge(isSimulated) {
+    if (isSimulated === undefined) return '';
+    return isSimulated
+        ? '<span class="badge badge-low" style="font-size:0.6rem;margin-left:0.3rem;background:#1e3a5f;color:#93c5fd;">SIM</span>'
+        : '<span class="badge badge-low" style="font-size:0.6rem;margin-left:0.3rem;background:#14532d;color:#bbf7d0;">REAL</span>';
+}
 let charts = {};
 let historyData = {};
 let dataCache = {};
@@ -149,8 +156,8 @@ function showAlertModal(assetName, assetLabel, status, score, explanation) {
     const info = STATUS_MAP[status] || STATUS_MAP.low;
     body.innerHTML = `
         <div class="alert-asset" style="color:${info.color}">${assetLabel}</div>
-        <div class="alert-detail"><strong>Estado:</strong> ${info.label}</div>
-        <div class="alert-detail"><strong>Puntaje:</strong> ${score}/100</div>
+        <div class="alert-detail"><strong>Criticidad:</strong> ${info.label}</div>
+        <div class="alert-detail"><strong>Índice de Salud (IS):</strong> ${score}/100</div>
         <div class="alert-detail"><strong>Diagnóstico:</strong> ${explanation || 'N/A'}</div>
     `;
     modal.classList.add('show');
@@ -175,12 +182,14 @@ function buildSensorGrid(asset, data) {
     const grid = document.getElementById(`sensors-${asset}`);
     if (!grid) return;
     const meta = data.sensors_meta || {};
+    const sim = data.is_simulated || {};
     grid.innerHTML = Object.entries(data.sensors || {}).map(([key, val]) => {
         const m = meta[key] || {};
         const label = m.label || key;
         const unit = m.unit || '';
+        const simFlag = simBadge(sim[key]);
         return `<div class="sensor-item">
-            <div class="sensor-label">${label}${unit ? ' (' + unit + ')' : ''}</div>
+            <div class="sensor-label">${label}${unit ? ' (' + unit + ')' : ''} ${simFlag}</div>
             <div class="sensor-value" id="${asset}-${key}">${val != null ? Number(val).toFixed(1) : '--'}</div>
         </div>`;
     }).join('');
@@ -192,13 +201,17 @@ function renderCards(data) {
     grid.innerHTML = assetKeys.map(asset => {
         const d = data[asset];
         const info = STATUS_MAP[d.status] || STATUS_MAP.low;
+        const assetSimBadge = d.all_simulated === false
+            ? '<span class="badge badge-low" style="font-size:0.6rem;background:#14532d;color:#bbf7d0;">DATOS REALES</span>'
+            : '<span class="badge badge-low" style="font-size:0.6rem;background:#1e3a5f;color:#93c5fd;">SIMULADO</span>';
         return `<div class="card ${selectedAsset === asset ? 'selected' : ''}" id="card-${asset}" data-asset="${asset}" style="border-color:${d.status === 'high' ? '#dc2626' : d.status === 'medium' ? '#ca8a04' : ''}">
             <div class="card-header">
-                <h2>${d.name || asset}</h2>
+                <h2>${d.name || asset} ${d.all_simulated !== undefined ? assetSimBadge : ''}</h2>
                 <span class="badge ${info.cls}" id="badge-${asset}">${info.label}</span>
             </div>
             <div class="sensor-grid" id="sensors-${asset}"></div>
             <div class="score-display">
+                <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:0.1rem;">Índice de Salud (IS)</div>
                 <span class="score-value" style="color:${info.color}" id="${asset}-score-val">${d.score}</span>
                 <div class="score-bar"><div class="score-fill" id="${asset}-score-bar" style="width:${Math.min(d.score, 100)}%;background:${info.color}"></div></div>
             </div>
@@ -281,6 +294,7 @@ function updateSummary(data) {
         return `<div class="summary-item ${selectedAsset === asset ? 'selected' : ''}" onclick="selectAsset('${asset}')">
             <div class="label">${d.name || asset}</div>
             <div class="value" style="color:${info.color}">${d.score}</div>
+            <div style="font-size:0.6rem;color:var(--text-dim);">IS</div>
         </div>`;
     }).join('');
 }
@@ -342,8 +356,11 @@ function updateEvents(events) {
         list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin eventos</div>';
         return;
     }
+    const STATUS_TRANSLATE = { 'low': 'VERDE', 'medium': 'AMARILLO', 'high': 'ROJO', 'none': 'NORMAL', '': '—' };
     list.innerHTML = events.slice(-20).reverse().map(e => {
-        const label = e.to === 'fault_sim' ? '⚠ SIMULACIÓN' : `${e.from} → ${e.to}`;
+        const fromLabel = STATUS_TRANSLATE[e.from] || e.from;
+        const toLabel = STATUS_TRANSLATE[e.to] || e.to;
+        const label = e.to === 'fault_sim' ? '⚠ SIMULACIÓN' : `${fromLabel} → ${toLabel}`;
         const type = e.to === 'fault_sim' ? 'badge-warning' : e.type === 'warning' ? 'badge-medium' : 'badge-low';
         return `<div class="event-item"><span class="event-time">${e.time}</span><span class="badge ${type}">${label}</span><span>${e.asset_name}</span></div>`;
     }).join('');
@@ -546,6 +563,9 @@ function populateSimDrawer() {
     <div class="form-group">
         <label>Inyectar valor (opcional)</label>
         <div id="simInjectFields"></div>
+    </div>
+    <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.5rem;padding:0.4rem;background:var(--bg-body);border-radius:6px;">
+        ⚠ Los datos simulados se usan solo para demostración. En producción, reemplazar por sensores reales.
     </div>
     <button class="btn btn-primary" onclick="applySimulation()">Aplicar</button>
     <button class="btn btn-danger" onclick="triggerRandomFault()" style="margin-top:0.5rem;width:100%;">⚡ Simular Falla Aleatoria</button>`;

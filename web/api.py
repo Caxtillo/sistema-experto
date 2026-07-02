@@ -170,6 +170,11 @@ def _build_asset_data(asset_name: str) -> dict | None:
                              "min": s.min_val, "max": s.max_val,
                              "sensor_type": s.sensor_type}
                     for s in sensors_list}
+    is_simulated = {
+        s.name: not (simulator.has_external(asset_name, s.name))
+        for s in sensors_list
+    }
+    all_simulated = all(is_simulated.values()) if is_simulated else True
     actuators_list = kb.get_actuators(asset.id)
     actuators_data = [
         {"id": a.id, "name": a.name, "label": a.label, "unit": a.unit,
@@ -183,10 +188,11 @@ def _build_asset_data(asset_name: str) -> dict | None:
         "sensors": sv,
         "sensor_types": sensor_types,
         "sensors_meta": sensors_meta,
+        "is_simulated": is_simulated,
+        "all_simulated": all_simulated,
         "actuators": actuators_data,
         "score": lr["score"],
         "status": lr["status"],
-        "rules": active_rules,
         "recommendations": RECOMMENDATIONS.get(asset_name, {}).get(lr["status"], ["No data"]),
         "explanation": explained["summary"],
         "scenarios": simulator.get_scenarios_list(asset_name),
@@ -562,7 +568,7 @@ async def get_report():
         lines.append(f"{status_icon.get(lr['status'], '  ')} {asset.label} ({asset_name})")
         if location:
             lines.append(f"      Ubicación: {location}")
-        lines.append(f"      Estado: {lr['status'].upper()}  Score: {lr['score']}/100")
+        lines.append(f"      Criticidad: {'ROJO' if lr['status'] == 'high' else 'AMARILLO' if lr['status'] == 'medium' else 'VERDE'}  IS: {lr['score']}/100")
         lines.append(f"      MTBF: {mtbf_res['mtbf_hours']}h  Fallos: {mtbf_res['failure_count']}")
         lines.append("      Sensores:")
         for k, v in sv.items():
@@ -694,14 +700,14 @@ async def get_report_html():
             <td>{asset.label}</td>
             <td><span class="status-dot" style="background:{color}"></span> {status_labels.get(lr['status'], 'VERDE')}</td>
             <td>{lr['score']:.0f}</td>
-            <td>{mtbf_res['mtbf_hours']}h</td>
-            <td>{mtbf_res['failure_count']}</td>
-            <td><table class="inner">{sensors_html}</table></td>
+                    <td>{mtbf_res['mtbf_hours']}h</td>
+                    <td>{mtbf_res['failure_count']}</td>
+                    <td><table class="inner">{sensors_html}</table></td>
         </tr>"""
         status_counts[lr["status"]] = status_counts.get(lr["status"], 0) + 1
 
     events_html = "".join(
-        f"<tr><td>{e['time']}</td><td>{e['asset_name']}</td><td>{e['from']}</td><td>{e['to']}</td></tr>"
+        f"<tr><td>{e['time']}</td><td>{e['asset_name']}</td><td>{'VERDE' if e['from'] == 'low' else 'AMARILLO' if e['from'] == 'medium' else 'ROJO' if e['from'] == 'high' else e['from']}</td><td>{'VERDE' if e['to'] == 'low' else 'AMARILLO' if e['to'] == 'medium' else 'ROJO' if e['to'] == 'high' else e['to']}</td></tr>"
         for e in event_cache[-20:]
     ) or "<tr><td colspan='4'>Sin eventos</td></tr>"
 
@@ -743,7 +749,7 @@ async def get_report_html():
 </div>
 
 <h2>Detalle de Activos</h2>
-<table><thead><tr><th>Activo</th><th>Estado</th><th>Score</th><th>MTBF</th><th>Fallos</th><th>Sensores</th></tr></thead>
+<table><thead><tr><th>Activo</th><th>Criticidad</th><th>IS</th><th>MTBF</th><th>Fallos</th><th>Sensores</th></tr></thead>
 <tbody>{rows_html}</tbody></table>
 
 <h2>Eventos Recientes</h2>

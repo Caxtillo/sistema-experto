@@ -4,105 +4,142 @@
     h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
     .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
     .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); }
-    .card h2 { font-size: 0.95rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
-    .form-group { margin-bottom: 0.75rem; }
-    .form-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.25rem; }
-    .form-group input, .form-group select { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; }
-    .form-group input:focus { outline: none; border-color: var(--accent); }
-    .btn { width: 100%; padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: var(--accent); color: white; }
-    .btn-primary:hover { background: var(--accent-hover); }
-    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-success { background: var(--success); color: white; }
-    .btn-success:hover { background: var(--success-hover); }
-    .btn-secondary { background: var(--bg-hover); color: var(--text); }
-    .btn-secondary:hover { background: var(--border); }
-    .btn-warning { background: #ca8a04; color: white; }
-    .btn-warning:hover { background: #a16207; }
-    .btn-danger { background: #dc2626; color: white; }
-    .btn-danger:hover { background: #b91c1c; }
-    .sensor-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
-    .sensor-row input { flex: 1; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; }
-    .sensor-row select { flex: 1; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; }
-    .sensor-row .label { min-width: 80px; font-size: 0.78rem; color: var(--text-muted); }
-    .status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
-    .badge-simulated { background: #166534; color: #bbf7d0; }
-    .badge-external { background: #7c2d12; color: #fbd38d; }
-    .badge-phone { background: #312e81; color: #c4b5fd; }
+    .card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    .breadcrumb { display: flex; gap: 0.3rem; align-items: center; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .breadcrumb span { color: var(--text-muted); }
+    .breadcrumb .current { color: var(--text); font-weight: 600; }
+    .breadcrumb .sep { color: var(--text-dim); }
+
+    .hierarchy-btn {
+        display: flex; align-items: center; gap: 0.6rem;
+        width: 100%; padding: 0.7rem 0.9rem; margin-bottom: 0.4rem;
+        border: 1px solid var(--border); border-radius: 10px;
+        background: var(--bg-body); color: var(--text);
+        font-size: 0.85rem; font-weight: 500; cursor: pointer;
+        transition: all 0.15s; text-align: left;
+    }
+    .hierarchy-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+    .hierarchy-btn .icon { font-size: 1.2rem; min-width: 1.5rem; text-align: center; }
+    .hierarchy-btn .arrow { margin-left: auto; color: var(--text-dim); font-size: 0.8rem; }
+    .hierarchy-btn .count { font-size: 0.65rem; color: var(--text-muted); background: var(--bg-card); padding: 0.1rem 0.4rem; border-radius: 9999px; margin-left: 0.3rem; }
+
+    .big-btn {
+        display: block; width: 100%; padding: 1rem;
+        border: none; border-radius: 12px;
+        font-size: 1.1rem; font-weight: 700; cursor: pointer;
+        transition: all 0.15s; text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    .big-btn:active { transform: scale(0.97); }
+    .big-btn.green { background: #166534; color: #bbf7d0; border: 2px solid #22c55e; }
+    .big-btn.green:active { background: #15803d; }
+    .big-btn.yellow { background: #854d0e; color: #fef08a; border: 2px solid #ca8a04; }
+    .big-btn.yellow:active { background: #a16207; }
+    .big-btn.red { background: #991b1b; color: #fecaca; border: 2px solid #dc2626; }
+    .big-btn.red:active { background: #b91c1c; }
+
+    .qual-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+    .qual-btn { padding: 0.8rem 0.5rem; border-radius: 10px; border: 2px solid var(--border); background: var(--bg-body); cursor: pointer; text-align: center; transition: all 0.15s; }
+    .qual-btn:active { transform: scale(0.95); }
+    .qual-btn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--bg-body)); }
+    .qual-btn .term { font-size: 1rem; font-weight: 700; }
+    .qual-btn .sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .qual-btn.low .term { color: #22c55e; }
+    .qual-btn.medium .term { color: #ca8a04; }
+    .qual-btn.high .term { color: #dc2626; }
+
+    .num-input-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
+    .num-input-row .sensor-label { min-width: 90px; font-size: 0.8rem; color: var(--text); }
+    .num-input-row .sensor-unit { font-size: 0.65rem; color: var(--text-dim); }
+    .num-input-row input[type=number] {
+        flex: 1; padding: 0.6rem; font-size: 1.1rem; font-weight: 600;
+        background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px;
+        color: var(--text); text-align: center;
+    }
+    .num-input-row input[type=number]:focus { outline: none; border-color: var(--accent); }
+    .num-stepper { display: flex; gap: 0; }
+    .num-stepper button {
+        padding: 0.5rem 0.8rem; font-size: 1rem; font-weight: 700;
+        border: 1px solid var(--border); background: var(--bg-hover); color: var(--text);
+        cursor: pointer;
+    }
+    .num-stepper button:first-child { border-radius: 6px 0 0 6px; }
+    .num-stepper button:last-child { border-radius: 0 6px 6px 0; }
+    .num-stepper button:active { background: var(--accent); color: white; }
+
+    .send-btn { width: 100%; padding: 1rem; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; }
+    .send-btn.primary { background: var(--accent); color: white; }
+    .send-btn.primary:active { background: var(--accent-hover); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .reading-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+    .reading-item:last-child { border-bottom: none; }
+    .reading-item .time { color: var(--text-dim); font-size: 0.7rem; }
+    .reading-item .val { font-weight: 600; }
+    .reading-item .src { font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
+    .src-sim { background: #1e3a5f; color: #93c5fd; }
+    .src-real { background: #14532d; color: #bbf7d0; }
+
     .toast { position: fixed; bottom: 1rem; left: 1rem; right: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center; font-weight: 500; animation: slideUp 0.3s ease; z-index: 100; }
     .toast.success { background: #14532d; border: 1px solid #22c55e; color: #bbf7d0; }
     .toast.error { background: #7c2d12; border: 1px solid #dc2626; color: #fbd38d; }
     .toast.info { background: #1e3a5f; border: 1px solid var(--accent); color: #93c5fd; }
     .toast.warning { background: #422006; border: 1px solid #ca8a04; color: #fef08a; }
     @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .reading { font-size: 2rem; font-weight: 800; text-align: center; padding: 0.5rem; color: var(--accent); }
-    .reading-label { text-align: center; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
-    .phone-sensor-btn { display: block; width: 100%; padding: 1rem; border: 2px dashed var(--accent); border-radius: 12px; background: transparent; color: var(--accent); font-size: 0.9rem; cursor: pointer; text-align: center; margin-bottom: 0.75rem; }
-    .phone-sensor-btn:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-    .phone-sensor-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
-    .mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .mode-toggle button { flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-body); color: var(--text-muted); font-size: 0.78rem; cursor: pointer; }
-    .mode-toggle button.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .input-mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .input-mode-toggle button { flex: 1; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-body); color: var(--text-muted); font-size: 0.72rem; cursor: pointer; }
-    .input-mode-toggle button.active { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
-    .info-box { background: var(--bg-body); border-radius: 8px; padding: 0.75rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
-    .info-box strong { color: var(--text); }
+
     .offline-banner { background: #7c2d12; color: #fbd38d; text-align: center; padding: 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 8px; margin-bottom: 0.75rem; display: none; }
     .pending-badge { background: #ca8a04; color: #fef08a; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; margin-left: 0.5rem; }
+    .phone-sensor-btn { display: block; width: 100%; padding: 1rem; border: 2px dashed var(--accent); border-radius: 12px; background: transparent; color: var(--accent); font-size: 0.9rem; cursor: pointer; text-align: center; margin-bottom: 0.75rem; }
+    .phone-sensor-btn:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .back-btn { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-body); color: var(--text); font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
+    .back-btn:hover { background: var(--bg-hover); }
+    .back-btn .icon { font-size: 0.9rem; }
 </style>
 
-<h1> Sensor Input</h1>
-<p class="subtitle">Envíe datos de sensores al Sistema Experto. Funciona offline — los datos se guardan localmente y se sincronizan automáticamente.</p>
+<h1>  Captura de Campo</h1>
+<p class="subtitle">Registre mediciones de sensores en sitio. Funciona sin conexión — los datos se guardan localmente y se sincronizan automáticamente.</p>
 
-<div id="offlineBanner" class="offline-banner"> Sin conexión — Los datos se guardarán localmente y se enviarán cuando haya conexión</div>
-<div id="pendingBanner" style="display:none;" class="offline-banner" style="background:#422006;color:#fef08a;"> Datos pendientes de sincronización: <span id="pendingCount">0</span></div>
+<div id="offlineBanner" class="offline-banner"> Sin conexión — Datos guardados localmente</div>
+<div id="pendingBanner" style="display:none;" class="offline-banner" style="background:#422006;color:#fef08a;"> Datos pendientes: <span id="pendingCount">0</span></div>
 
-<div class="card">
-    <h2>1. Seleccionar Activo</h2>
-    <select id="assetSelect" onchange="loadSensors()"></select>
+<div id="hierarchyView" class="card">
+    <h2>  Seleccionar Ubicación</h2>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div id="hierarchyContent"></div>
 </div>
 
-<div class="card" id="sensorCard" style="display:none;">
-    <h2>2. Ingresar Datos</h2>
-    <div class="mode-toggle">
-        <button class="active" onclick="setMode('manual')" id="modeManual"> Manual</button>
-        <button onclick="setMode('phone')" id="modePhone">  Sensores</button>
+<div id="sensorForm" class="card" style="display:none;">
+    <h2>  Ingresar Datos</h2>
+    <div class="breadcrumb" id="formBreadcrumb"></div>
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+        <button class="back-btn" onclick="backToHierarchy()"><span class="icon">←</span> Volver</button>
+        <button class="back-btn" onclick="toggleInputMode()" id="modeToggleBtn"> Modo Cualitativo</button>
+        <button class="back-btn" onclick="startPhoneCapture()" id="phoneToggle">  Sensor</button>
     </div>
 
-    <div id="manualMode">
-        <div class="input-mode-toggle">
-            <button class="active" onclick="setInputMode('numeric')" id="inputModeNumeric"> Numérico</button>
-            <button onclick="setInputMode('qualitative')" id="inputModeQualitative"> Cualitativo</button>
-        </div>
-        <div class="info-box" style="margin-bottom:0.75rem;">
-            <strong>Numérico:</strong> Ingrese el valor exacto. <strong>Cualitativo:</strong> Seleccione el nivel cualitativo (Bajo, Medio, Alto).
-        </div>
-        <div id="manualInputs"></div>
-        <button class="btn btn-primary" onclick="sendManualData()" id="sendBtn">Enviar Datos</button>
-    </div>
+    <div id="numericInputs"></div>
+    <div id="qualitativeInputs" style="display:none;"></div>
+    <div id="phoneCaptureArea" style="display:none;"></div>
 
-    <div id="phoneMode" style="display:none;">
-        <div class="info-box" style="margin-bottom:0.75rem;">
-            <strong>¿Cómo funciona?</strong> El teléfono captura datos de sus sensores (acelerómetro, giroscopio) y los envía al sistema.
-            <br><br>
-            <strong>Nota:</strong> No todos los navegadores/teléfonos soportan todos los sensores.
-        </div>
-        <div id="phoneSensors"></div>
-    </div>
+    <button class="send-btn primary" id="sendBtn" onclick="sendData()">  Enviar Datos</button>
 </div>
 
 <div class="card" id="statusCard" style="display:none;">
-    <h2>Últimos Envíos <span id="pendingBadge" class="pending-badge" style="display:none;"></span></h2>
+    <h2>  Últimos Envíos <span id="pendingBadge" class="pending-badge" style="display:none;"></span></h2>
     <div id="lastReadings"></div>
 </div>
 
 <script>
+    let hierarchy = [];
+    let navStack = [];
     let currentAsset = null;
     let currentSensors = [];
-    let mode = 'manual';
-    let inputMode = 'numeric';
-    let watchId = null;
+    let qualMode = false;
+    let phoneWatchId = null;
+    let selectedQuals = {};
+
     const DB_NAME = 'sensor-input-db';
     const DB_VERSION = 1;
     const STORE_NAME = 'pending';
@@ -112,9 +149,8 @@
             const req = indexedDB.open(DB_NAME, DB_VERSION);
             req.onupgradeneeded = (e) => {
                 const db = e.target.result;
-                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                if (!db.objectStoreNames.contains(STORE_NAME))
                     db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                }
             };
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
@@ -125,7 +161,7 @@
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         tx.objectStore(STORE_NAME).add({ ...data, _ts: Date.now() });
-        await new Promise((r) => { tx.oncomplete = r; });
+        await new Promise(r => { tx.oncomplete = r; });
         updatePendingCount();
     }
 
@@ -133,33 +169,25 @@
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readonly');
         const all = tx.objectStore(STORE_NAME).getAll();
-        return new Promise((r) => { all.onsuccess = () => r(all.result); });
+        return new Promise(r => { all.onsuccess = () => r(all.result); });
     }
 
     async function clearPending(ids) {
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        for (const id of ids) store.delete(id);
-        await new Promise((r) => { tx.oncomplete = r; });
+        for (const id of ids) tx.objectStore(STORE_NAME).delete(id);
+        await new Promise(r => { tx.oncomplete = r; });
         updatePendingCount();
     }
 
     async function updatePendingCount() {
         const pending = await getPending();
-        const count = pending.length;
+        const n = pending.length;
         const badge = document.getElementById('pendingBadge');
         const banner = document.getElementById('pendingBanner');
         const countEl = document.getElementById('pendingCount');
-        if (count > 0) {
-            badge.style.display = 'inline';
-            badge.textContent = `${count} pendiente(s)`;
-            banner.style.display = 'block';
-            countEl.textContent = count;
-        } else {
-            badge.style.display = 'none';
-            banner.style.display = 'none';
-        }
+        if (n > 0) { badge.style.display = 'inline'; badge.textContent = `${n} pendiente(s)`; banner.style.display = 'block'; countEl.textContent = n; }
+        else { badge.style.display = 'none'; banner.style.display = 'none'; }
     }
 
     async function syncPending() {
@@ -169,14 +197,11 @@
         for (const item of pending) {
             try {
                 const r = await fetch('/api/sensor-data', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ asset: item.asset, sensor: item.sensor, value: item.value })
                 });
                 if (r.ok) successIds.push(item.id);
-            } catch (e) {
-                break;
-            }
+            } catch(e) { break; }
         }
         if (successIds.length > 0) {
             await clearPending(successIds);
@@ -184,160 +209,246 @@
         }
     }
 
-    function isOnline() {
-        return navigator.onLine;
-    }
+    function isOnline() { return navigator.onLine; }
 
     window.addEventListener('online', () => {
         document.getElementById('offlineBanner').style.display = 'none';
         showToast('Conexión restaurada — sincronizando...', 'success');
         syncPending();
     });
-
     window.addEventListener('offline', () => {
         document.getElementById('offlineBanner').style.display = 'block';
-        showToast('Sin conexión — los datos se guardarán localmente', 'warning');
+        showToast('Sin conexión — datos guardados localmente', 'warning');
     });
 
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/static/service-worker.js');
-        });
+        window.addEventListener('load', () => navigator.serviceWorker.register('/static/service-worker.js'));
     }
 
-    async function loadAssets() {
+    async function loadHierarchy() {
         try {
-            const r = await fetch('/api/assets');
-            const assets = await r.json();
-            const sel = document.getElementById('assetSelect');
-            sel.innerHTML = assets.map(a => `<option value="${a.name}">${a.label}</option>`).join('');
-            if (assets.length > 0) loadSensors();
-        } catch (e) {
-            showToast('Error al cargar activos', 'error');
+            const r = await fetch('/api/hierarchy');
+            hierarchy = await r.json();
+            navStack = [{ type: 'root', data: hierarchy, title: 'Condominios' }];
+            renderLevel();
+        } catch(e) { showToast('Error al cargar jerarquía', 'error'); }
+    }
+
+    function renderBreadcrumb() {
+        const bc = document.getElementById('breadcrumb');
+        bc.innerHTML = navStack.map((n, i) => {
+            const cls = i === navStack.length - 1 ? 'current' : '';
+            return `<span class="${cls}">${n.title}</span>${i < navStack.length - 1 ? '<span class="sep"> › </span>' : ''}`;
+        }).join('');
+    }
+
+    function renderLevel() {
+        const current = navStack[navStack.length - 1];
+        const container = document.getElementById('hierarchyContent');
+        renderBreadcrumb();
+
+        if (!current.data || current.data.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem;">Sin elementos</div>';
+            return;
+        }
+
+        if (current.type === 'root') {
+            container.innerHTML = current.data.map(c => `
+                <button class="hierarchy-btn" onclick="navigateTo('condo', ${c.id}, '${c.name}')">
+                    <span class="icon"></span>
+                    <span>${c.name} <span class="count">${(c.buildings || []).length} edificios</span></span>
+                    <span class="arrow">›</span>
+                </button>
+            `).join('');
+        } else if (current.type === 'condo') {
+            container.innerHTML = (current.data.buildings || []).map(b => `
+                <button class="hierarchy-btn" onclick="navigateTo('building', ${b.id}, '${b.name}', ${current.data.id})">
+                    <span class="icon"></span>
+                    <span>${b.name} <span class="count">${(b.rooms || []).length} salas</span></span>
+                    <span class="arrow">›</span>
+                </button>
+            `).join('');
+        } else if (current.type === 'building') {
+            container.innerHTML = (current.data.rooms || []).map(r => `
+                <button class="hierarchy-btn" onclick="navigateTo('room', ${r.id}, '${r.name}')">
+                    <span class="icon">⚙️</span>
+                    <span>${r.name} <span class="count">${(r.assets || []).length} activos</span></span>
+                    <span class="arrow">›</span>
+                </button>
+            `).join('');
+        } else if (current.type === 'room') {
+            container.innerHTML = (current.data.assets || []).map(a => `
+                <button class="hierarchy-btn" onclick="openSensorForm('${a.name}', '${a.label}')">
+                    <span class="icon">📊</span>
+                    <span>${a.label}</span>
+                    <span class="arrow">›</span>
+                </button>
+            `).join('');
         }
     }
 
-    async function loadSensors() {
-        const assetName = document.getElementById('assetSelect').value;
-        if (!assetName) return;
+    function navigateTo(type, id, title, parentId) {
+        let data;
+        if (type === 'condo') {
+            data = hierarchy.find(c => c.id === id);
+        } else if (type === 'building') {
+            const condo = hierarchy.find(c => (c.buildings || []).some(b => b.id === id));
+            data = condo ? condo.buildings.find(b => b.id === id) : null;
+        } else if (type === 'room') {
+            for (const c of hierarchy) {
+                for (const b of (c.buildings || [])) {
+                    const room = (b.rooms || []).find(r => r.id === id);
+                    if (room) { data = room; break; }
+                }
+                if (data) break;
+            }
+        }
+        navStack.push({ type, data, title });
+        renderLevel();
+    }
+
+    function backToHierarchy() {
+        document.getElementById('sensorForm').style.display = 'none';
+        document.getElementById('hierarchyView').style.display = 'block';
+        document.getElementById('statusCard').style.display = 'none';
+    }
+
+    async function openSensorForm(assetName, assetLabel) {
+        currentAsset = assetName;
         try {
             const r = await fetch(`/api/sensor-types?asset_name=${assetName}`);
             currentSensors = await r.json();
-            currentAsset = assetName;
-            document.getElementById('sensorCard').style.display = 'block';
+            qualMode = false;
+            selectedQuals = {};
+            document.getElementById('modeToggleBtn').textContent = ' Modo Cualitativo';
+            document.getElementById('qualitativeInputs').style.display = 'none';
+            document.getElementById('numericInputs').style.display = 'block';
+
+            const bc = document.getElementById('formBreadcrumb');
+            bc.innerHTML = navStack.map((n, i) =>
+                `<span class="${i === navStack.length - 1 ? 'current' : ''}">${n.title}</span>${i < navStack.length - 1 ? '<span class="sep"> › </span>' : ''}`
+            ).join('') + `<span class="sep"> › </span><span class="current">${assetLabel}</span>`;
+
+            renderNumericInputs();
+            document.getElementById('hierarchyView').style.display = 'none';
+            document.getElementById('sensorForm').style.display = 'block';
             document.getElementById('statusCard').style.display = 'block';
-            renderManualInputs();
-            renderPhoneSensors();
-        } catch (e) {
-            showToast('Error al cargar sensores', 'error');
-        }
+            loadLastReadings();
+        } catch(e) { showToast('Error al cargar sensores', 'error'); }
     }
 
-    function getQualitativeOptions(mfConfig) {
-        if (!mfConfig || mfConfig.length === 0) {
-            return [{ value: '', label: 'Normal' }];
-        }
-        const termMap = {
-            'none': 'Normal',
-            'low': 'Bajo',
-            'medium': 'Medio',
-            'high': 'Alto',
-            'critical': 'Crítico',
-            'very_low': 'Muy Bajo',
-            'empty': 'Vacío',
-            'clear': 'Despejado',
-            'detected': 'Detectado',
-            'heavy': 'Denso',
-            'normal': 'Normal',
-            'stable': 'Estable',
-            'moderate': 'Moderado',
-            'erratic': 'Errátil',
-            'cool': 'Frío',
-            'cold': 'Frío',
-            'warm': 'Cálido',
-            'hot': 'Caliente',
-            'dim': 'Débil',
-            'bright': 'Fuerte',
-            'closed': 'Cerrada',
-            'open': 'Abierta',
-        };
-        return mfConfig.map(mf => ({
-            value: mf.term,
-            label: termMap[mf.term] || mf.term.charAt(0).toUpperCase() + mf.term.slice(1),
-        }));
-    }
-
-    function getDefaultValueForTerm(sensor, term) {
-        if (!sensor.mf_config) return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
-        const mf = sensor.mf_config.find(m => m.term === term);
-        if (!mf || !mf.params) return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
-        const p = mf.params;
-        if (p.length >= 3) {
-            return (p[0] + p[2]) / 2;
-        }
-        return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
-    }
-
-    function renderManualInputs() {
-        const container = document.getElementById('manualInputs');
-        if (inputMode === 'numeric') {
-            container.innerHTML = currentSensors.map(s => `
-                <div class="sensor-row">
-                    <span class="label">${s.label} <span style="color:#64748b;font-size:0.65rem;">(${s.unit}, ${s.min_val}-${s.max_val})</span></span>
-                    <input type="number" id="val-${s.name}" step="0.1"
-                           placeholder="${s.min_val} - ${s.max_val}"
-                           min="${s.min_val}" max="${s.max_val}">
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = currentSensors.map(s => {
-                const opts = getQualitativeOptions(s.mf_config);
-                return `
-                    <div class="sensor-row">
-                        <span class="label">${s.label}</span>
-                        <select id="qual-${s.name}">
-                            ${opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
-                        </select>
-                    </div>
-                `;
-            }).join('');
-        }
-    }
-
-    function setInputMode(newMode) {
-        inputMode = newMode;
-        document.getElementById('inputModeNumeric').classList.toggle('active', newMode === 'numeric');
-        document.getElementById('inputModeQualitative').classList.toggle('active', newMode === 'qualitative');
-        renderManualInputs();
-    }
-
-    function renderPhoneSensors() {
-        const container = document.getElementById('phoneSensors');
+    function renderNumericInputs() {
+        const container = document.getElementById('numericInputs');
         container.innerHTML = currentSensors.map(s => `
-            <div class="sensor-row" style="flex-direction:column;align-items:stretch;margin-bottom:0.75rem;background:#0f172a;border-radius:8px;padding:0.75rem;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
-                    <span style="font-weight:600;font-size:0.85rem;">${s.label}</span>
-                    <span class="status-badge" id="phone-status-${s.name}" style="background:#334155;color:#94a3b8;">inactivo</span>
+            <div class="num-input-row">
+                <div>
+                    <div class="sensor-label">${s.label}</div>
+                    <div class="sensor-unit">${s.unit} (${s.min_val}-${s.max_val})</div>
                 </div>
-                <div class="reading" id="phone-val-${s.name}">--</div>
-                <div class="reading-label">${s.unit} (rango: ${s.min_val}-${s.max_val})</div>
+                <div class="num-stepper">
+                    <button onclick="stepValue('${s.name}', -1)">−</button>
+                </div>
+                <input type="number" id="val-${s.name}" step="0.1" min="${s.min_val}" max="${s.max_val}"
+                       placeholder="${((s.min_val + s.max_val) / 2).toFixed(1)}">
+                <div class="num-stepper">
+                    <button onclick="stepValue('${s.name}', 1)">+</button>
+                </div>
             </div>
         `).join('');
     }
 
-    function setMode(newMode) {
-        mode = newMode;
-        document.getElementById('modeManual').classList.toggle('active', newMode === 'manual');
-        document.getElementById('modePhone').classList.toggle('active', newMode === 'phone');
-        document.getElementById('manualMode').style.display = newMode === 'manual' ? 'block' : 'none';
-        document.getElementById('phoneMode').style.display = newMode === 'phone' ? 'block' : 'none';
-        if (newMode === 'phone') startPhoneSensors();
-        else stopPhoneSensors();
+    function stepValue(name, dir) {
+        const el = document.getElementById(`val-${name}`);
+        const step = parseFloat(el.step) || 0.1;
+        const min = parseFloat(el.min) || 0;
+        const max = parseFloat(el.max) || 100;
+        let v = parseFloat(el.value) || ((min + max) / 2);
+        v = Math.max(min, Math.min(max, v + dir * step));
+        el.value = Math.round(v * 10) / 10;
+    }
+
+    function toggleInputMode() {
+        qualMode = !qualMode;
+        const btn = document.getElementById('modeToggleBtn');
+        if (qualMode) {
+            btn.textContent = ' Modo Numérico';
+            document.getElementById('numericInputs').style.display = 'none';
+            renderQualitativeInputs();
+            document.getElementById('qualitativeInputs').style.display = 'block';
+        } else {
+            btn.textContent = ' Modo Cualitativo';
+            document.getElementById('qualitativeInputs').style.display = 'none';
+            document.getElementById('numericInputs').style.display = 'block';
+        }
+    }
+
+    function getQualitativeOptions(mfConfig) {
+        if (!mfConfig || mfConfig.length === 0) return [];
+        const termMap = {
+            'low': { label: 'Bajo', cls: 'low' },
+            'medium': { label: 'Medio', cls: 'medium' },
+            'high': { label: 'Alto', cls: 'high' },
+            'none': { label: 'Normal', cls: 'low' },
+            'critical': { label: 'Crítico', cls: 'high' },
+            'very_low': { label: 'Muy Bajo', cls: 'low' },
+            'empty': { label: 'Vacío', cls: 'high' },
+            'clear': { label: 'Despejado', cls: 'low' },
+            'detected': { label: 'Detectado', cls: 'high' },
+            'heavy': { label: 'Denso', cls: 'high' },
+            'normal': { label: 'Normal', cls: 'low' },
+            'stable': { label: 'Estable', cls: 'low' },
+            'moderate': { label: 'Moderado', cls: 'medium' },
+            'erratic': { label: 'Errátil', cls: 'high' },
+            'cool': { label: 'Frío', cls: 'low' },
+            'cold': { label: 'Frío', cls: 'low' },
+            'warm': { label: 'Cálido', cls: 'medium' },
+            'hot': { label: 'Caliente', cls: 'high' },
+            'dim': { label: 'Débil', cls: 'low' },
+            'bright': { label: 'Fuerte', cls: 'high' },
+            'closed': { label: 'Cerrada', cls: 'low' },
+            'open': { label: 'Abierta', cls: 'high' },
+            'stopped': { label: 'Detenido', cls: 'high' },
+            'over': { label: 'Exceso', cls: 'high' },
+            'slow': { label: 'Lento', cls: 'medium' },
+            'fast': { label: 'Rápido', cls: 'high' },
+            'elevated': { label: 'Elevada', cls: 'medium' },
+        };
+        return mfConfig.map(mf => termMap[mf.term] || { label: mf.term, cls: 'low' });
+    }
+
+    function getDefaultValueForTerm(sensor, term) {
+        if (!sensor.mf_config) return (sensor.min_val + sensor.max_val) / 2;
+        const mf = sensor.mf_config.find(m => m.term === term);
+        if (!mf || !mf.params || mf.params.length < 3) return (sensor.min_val + sensor.max_val) / 2;
+        return (mf.params[0] + mf.params[2]) / 2;
+    }
+
+    function renderQualitativeInputs() {
+        const container = document.getElementById('qualitativeInputs');
+        container.innerHTML = currentSensors.map(s => {
+            const opts = getQualitativeOptions(s.mf_config);
+            const selected = selectedQuals[s.name] || '';
+            return `<div style="margin-bottom:1rem;">
+                <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">${s.label}</div>
+                <div class="qual-grid">
+                    ${opts.map(o => `
+                        <button class="qual-btn ${o.cls} ${selected === o.label ? 'selected' : ''}"
+                                onclick="selectQual('${s.name}','${o.label}')">
+                            <div class="term">${o.label}</div>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function selectQual(sensor, label) {
+        selectedQuals[sensor] = selectedQuals[sensor] === label ? '' : label;
+        renderQualitativeInputs();
     }
 
     function showToast(msg, type) {
-        const existing = document.querySelector('.toast');
-        if (existing) existing.remove();
+        document.querySelectorAll('.toast').forEach(t => t.remove());
         const t = document.createElement('div');
         t.className = `toast ${type}`;
         t.textContent = msg;
@@ -345,139 +456,101 @@
         setTimeout(() => t.remove(), 3000);
     }
 
-    async function sendManualData() {
+    async function sendData() {
         const btn = document.getElementById('sendBtn');
-        btn.disabled = true;
-        btn.textContent = 'Enviando...';
-
+        btn.disabled = true; btn.textContent = 'Enviando...';
         let sent = 0;
+
         for (const s of currentSensors) {
             let val;
-            if (inputMode === 'numeric') {
-                const input = document.getElementById(`val-${s.name}`);
-                val = parseFloat(input.value);
-                if (isNaN(val) || val < s.min_val || val > s.max_val) continue;
+            if (qualMode) {
+                const label = selectedQuals[s.name];
+                if (!label) continue;
+                const opts = getQualitativeOptions(s.mf_config);
+                const found = opts.find(o => o.label === label);
+                const term = found ? s.mf_config.find(m => {
+                    const t = { 'Bajo':'low','Medio':'medium','Alto':'high','Normal':'low','Crítico':'high',
+                        'Muy Bajo':'very_low','Vacío':'empty','Despejado':'clear','Detectado':'detected',
+                        'Denso':'heavy','Estable':'stable','Moderado':'moderate','Errátil':'erratic',
+                        'Frío':'cold','Cálido':'warm','Caliente':'hot','Débil':'dim','Fuerte':'bright',
+                        'Cerrada':'closed','Abierta':'open','Detenido':'stopped','Exceso':'over',
+                        'Lento':'slow','Rápido':'fast','Elevada':'elevated' }[label] || label;
+                    return m.term === t;
+                }) : null;
+                if (!found || !found.term) continue;
+                val = getDefaultValueForTerm(s, found.term);
             } else {
-                const sel = document.getElementById(`qual-${s.name}`);
-                const term = sel.value;
-                if (!term) continue;
-                val = getDefaultValueForTerm(s, term);
+                const el = document.getElementById(`val-${s.name}`);
+                val = parseFloat(el.value);
+                if (isNaN(val) || val < s.min_val || val > s.max_val) continue;
             }
 
             const payload = { asset: currentAsset, sensor: s.name, value: val };
-
             try {
                 if (isOnline()) {
                     const r = await fetch('/api/sensor-data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
                     });
                     if (!r.ok) throw new Error('Server error');
-                } else {
-                    throw new Error('Offline');
-                }
+                } else { throw new Error('Offline'); }
                 sent++;
-            } catch (e) {
-                await savePending(payload);
-                sent++;
-            }
+            } catch(e) { await savePending(payload); sent++; }
         }
 
-        if (!isOnline() && sent > 0) {
-            showToast(`${sent} dato(s) guardados localmente`, 'warning');
-        } else if (sent > 0) {
-            showToast(`${sent} sensor(es) enviados correctamente`, 'success');
+        if (sent > 0) {
+            showToast(`${sent} sensor(es) enviado(s)`, isOnline() ? 'success' : 'warning');
         } else {
-            showToast('Ingrese al menos un valor válido', 'error');
+            showToast('Seleccione o ingrese al menos un valor válido', 'error');
         }
         loadLastReadings();
-        btn.disabled = false;
-        btn.textContent = 'Enviar Datos';
+        btn.disabled = false; btn.textContent = '  Enviar Datos';
     }
 
-    function startPhoneSensors() {
-        if (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) {
-            showToast('Este dispositivo no soporta sensores', 'error');
+    let phoneCaptureActive = false;
+    function startPhoneCapture() {
+        phoneCaptureActive = !phoneCaptureActive;
+        const btn = document.getElementById('phoneToggle');
+        const area = document.getElementById('phoneCaptureArea');
+
+        if (!phoneCaptureActive) {
+            btn.textContent = '  Sensor';
+            area.style.display = 'none';
+            if (phoneWatchId) { clearInterval(phoneWatchId); phoneWatchId = null; }
             return;
         }
+        btn.textContent = '  Detener Sensor';
+        area.style.display = 'block';
+        area.innerHTML = currentSensors.map(s => `
+            <div style="margin-bottom:0.5rem;background:var(--bg-body);border-radius:8px;padding:0.75rem;">
+                <div style="display:flex;justify-content:space-between;">
+                    <span style="font-weight:600;font-size:0.85rem;">${s.label}</span>
+                    <span style="font-size:1.2rem;font-weight:800;color:var(--accent);" id="phone-val-${s.name}">--</span>
+                </div>
+                <div style="font-size:0.65rem;color:var(--text-dim);">${s.unit} (${s.min_val}-${s.max_val})</div>
+            </div>
+        `).join('');
 
-        if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
-            DeviceOrientationEvent.requestPermission().then(state => {
-                if (state !== 'granted') showToast('Permiso denegado', 'error');
-            });
-        }
-        if (typeof DeviceMotionEvent?.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission().catch(() => {});
-        }
-
-        watchId = setInterval(async () => {
-            const assetName = currentAsset;
-            if (!assetName) return;
-
+        phoneWatchId = setInterval(async () => {
+            if (!currentAsset) return;
             for (const s of currentSensors) {
-                const statusEl = document.getElementById(`phone-status-${s.name}`);
-                const valEl = document.getElementById(`phone-val-${s.name}`);
-
-                let val;
-                if (s.name === 'vibration') {
-                    val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.3;
-                } else if (s.name === 'temperature' || s.name === 'temp_rise' || s.name === 'coolant_temp') {
-                    val = 25 + Math.random() * 10;
-                } else if (s.name === 'speed_var' || s.name === 'rpm') {
-                    val = Math.random() * 3;
-                } else if (s.name === 'voltage' || s.name === 'voltage_out') {
-                    val = 215 + Math.random() * 15;
-                } else if (s.name === 'current' || s.name === 'current_draw') {
-                    val = 20 + Math.random() * 40;
-                } else if (s.name === 'flow') {
-                    val = 30 + Math.random() * 40;
-                } else if (s.name === 'pressure' || s.name === 'water_pressure') {
-                    val = 30 + Math.random() * 40;
-                } else if (s.name === 'tank_level' || s.name === 'fuel_level' || s.name === 'battery_level') {
-                    val = 40 + Math.random() * 40;
-                } else if (s.name === 'ambient_light') {
-                    val = 30 + Math.random() * 40;
-                } else if (s.name === 'smoke_level') {
-                    val = Math.random() * 20;
-                } else if (s.name === 'temp_in' || s.name === 'temp_out') {
-                    val = 22 + Math.random() * 8;
-                } else if (s.name === 'door_sensors' || s.name === 'motion_detect') {
-                    val = Math.random() > 0.8 ? 1 : 0;
-                } else {
-                    val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.5;
-                }
-
+                const el = document.getElementById(`phone-val-${s.name}`);
+                let val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.3;
                 val = Math.round(Math.max(s.min_val, Math.min(s.max_val, val)) * 10) / 10;
-                valEl.textContent = val.toFixed(1);
-                statusEl.textContent = 'enviando';
-                statusEl.className = 'status-badge badge-phone';
-
-                const payload = { asset: assetName, sensor: s.name, value: val };
-
+                if (el) el.textContent = val.toFixed(1);
+                const payload = { asset: currentAsset, sensor: s.name, value: val };
                 try {
                     if (isOnline()) {
                         const r = await fetch('/api/sensor-data', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
                         });
-                        if (!r.ok) throw new Error('Server error');
-                        statusEl.textContent = 'enviado';
-                    } else {
-                        throw new Error('Offline');
-                    }
-                } catch(e) {
-                    await savePending(payload);
-                    statusEl.textContent = 'local';
-                }
+                        if (!r.ok) throw new Error('err');
+                    } else { throw new Error('offline'); }
+                } catch(e) { await savePending(payload); }
             }
             loadLastReadings();
         }, 3000);
-    }
-
-    function stopPhoneSensors() {
-        if (watchId) { clearInterval(watchId); watchId = null; }
     }
 
     async function loadLastReadings() {
@@ -486,22 +559,24 @@
             if (!r.ok) return;
             const events = await r.json();
             const container = document.getElementById('lastReadings');
-            const relevant = events.filter(e => e.asset === currentAsset).slice(0, 5);
+            const relevant = events.filter(e => e.asset === currentAsset).slice(0, 8);
             if (relevant.length === 0) {
                 container.innerHTML = '<div style="color:#64748b;font-size:0.8rem;">Sin datos aún</div>';
                 return;
             }
-            container.innerHTML = relevant.map(e =>
-                `<div style="font-size:0.8rem;padding:0.3rem 0;border-bottom:1px solid #0f172a;">
-                    <span style="color:#64748b;">${e.time}</span>
-                    <span style="color:#94a3b8;">${e.asset_name}:</span>
-                    <span style="color:#3b82f6;">${e.to}</span>
-                </div>`
-            ).join('');
-        } catch (e) {}
+            container.innerHTML = relevant.map(e => {
+                const isSim = e.from === 'lectura' && e.type === 'info';
+                return `<div class="reading-item">
+                    <span class="time">${e.time}</span>
+                    <span>${e.asset_name}</span>
+                    <span class="val">${e.to}</span>
+                    <span class="src ${isSim ? 'src-real' : 'src-sim'}">${isSim ? 'REAL' : 'SIM'}</span>
+                </div>`;
+            }).join('');
+        } catch(e) {}
     }
 
-    loadAssets();
+    loadHierarchy();
     setInterval(loadLastReadings, 5000);
     updatePendingCount();
     if (!isOnline()) document.getElementById('offlineBanner').style.display = 'block';
