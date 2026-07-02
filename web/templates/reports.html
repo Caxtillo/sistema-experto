@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); }
+    .card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .report-grid { grid-template-columns: 1fr; } }
+    .btn { padding: 0.5rem 1rem; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; transition: all 0.15s; }
+    .btn:hover { filter: brightness(1.15); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-warning { background: #ca8a04; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--bg-hover); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+    .filter-row { display: flex; gap: 0.75rem; align-items: end; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .filter-row .field { display: flex; flex-direction: column; gap: 0.2rem; }
+    .filter-row label { font-size: 0.72rem; color: var(--text-muted); }
+    .filter-row select, .filter-row input { padding: 0.45rem 0.65rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.82rem; }
+    .report-card { background: var(--bg-body); border-radius: 8px; padding: 1rem; border: 1px solid var(--border); }
+    .report-card h3 { font-size: 0.85rem; margin-bottom: 0.5rem; }
+    .report-card p { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .preview-frame { width: 100%; height: 500px; border: 1px solid var(--border); border-radius: 8px; background: white; }
+</style>
+
+<h1> Reportes</h1>
+<p class="subtitle">Genere reportes de estado, exporte datos a CSV, o visualice el reporte completo en HTML para imprimir.</p>
+
+<div class="report-grid">
+    <div class="report-card">
+        <h3> Reporte de Estado (HTML)</h3>
+        <p>Reporte completo con resumen de semáforo, detalle de activos con MTBF, sensores, y eventos recientes. Use "Imprimir → Guardar como PDF" desde el navegador.</p>
+        <a href="/api/report/html" target="_blank" class="btn btn-primary">Abrir Reporte</a>
+    </div>
+
+    <div class="report-card">
+        <h3> Reporte de Texto</h3>
+        <p>Reporte en texto plano con la misma información. Ideal para integración con otros sistemas o visualización rápida en terminal.</p>
+        <a href="/api/report" target="_blank" class="btn btn-outline">Ver Reporte</a>
+    </div>
+
+    <div class="report-card">
+        <h3> Exportar Eventos</h3>
+        <p>Historial de cambios de estado de todos los activos. Incluye timestamp, activo, estado anterior y nuevo.</p>
+        <div class="btn-group">
+            <a href="/api/report/csv/events?limit=500" class="btn btn-success btn-sm"> CSV</a>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <h3> Exportar Lecturas</h3>
+        <p>Datos históricos de sensores. Seleccione un activo específico para filtrar.</p>
+        <div class="filter-row" style="margin-bottom:0.5rem;">
+            <div class="field">
+                <label>Activo</label>
+                <select id="readingAssetSelect" onchange="updateReadingLink()"></select>
+            </div>
+        </div>
+        <div class="btn-group">
+            <a href="/api/report/csv/readings?limit=500" id="readingCsvLink" class="btn btn-success btn-sm"> CSV</a>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <h3> Exportar Auditoría</h3>
+        <p>Registro de auditoría con acciones de usuarios: inicios de sesión, cambios de escenario, comandos de actuadores.</p>
+        <div class="btn-group">
+            <a href="/api/report/csv/audit?limit=500" class="btn btn-success btn-sm"> CSV</a>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <h3> Datos de Jerarquía</h3>
+        <p>Estructura completa de condominios, edificios, salas y activos con estados actuales en formato JSON.</p>
+        <div class="btn-group">
+            <a href="/api/hierarchy" target="_blank" class="btn btn-outline btn-sm"> Ver JSON</a>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:1rem;">
+    <h2> Vista Previa del Reporte HTML</h2>
+    <iframe src="/api/report/html" class="preview-frame" id="reportPreview"></iframe>
+</div>
+
+<script>
+    async function loadAssets() {
+        const r = await fetch('/api/assets');
+        const assets = await r.json();
+        const sel = document.getElementById('readingAssetSelect');
+        sel.innerHTML = '<option value="">Todos los activos</option>' +
+            assets.map(a => `<option value="${a.name}">${a.label}</option>`).join('');
+    }
+
+    function updateReadingLink() {
+        const asset = document.getElementById('readingAssetSelect').value;
+        const link = document.getElementById('readingCsvLink');
+        if (asset) {
+            link.href = `/api/report/csv/readings?asset_name=${encodeURIComponent(asset)}&limit=500`;
+        } else {
+            link.href = '/api/report/csv/readings?limit=500';
+        }
+    }
+
+    loadAssets();
+</script>
+{% endblock %}

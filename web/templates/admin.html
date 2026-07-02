@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .tabs button { padding: 0.6rem 1.2rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.82rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .tabs button.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); }
+    .card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; }
+    table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+    th, td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; }
+    td { color: var(--text); }
+    .btn { padding: 0.35rem 0.75rem; border: none; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-warning { background: #ca8a04; color: white; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    .badge-low { background: #166534; color: #bbf7d0; }
+    .badge-medium { background: #854d0e; color: #fef08a; }
+    .badge-high { background: #991b1b; color: #fecaca; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 400px; max-width: 90%; }
+    .modal h3 { font-size: 0.95rem; margin-bottom: 0.75rem; }
+    .modal .form-group { margin-bottom: 0.75rem; }
+    .modal .form-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .modal .form-group input, .modal .form-group select { width: 100%; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.85rem; }
+    .modal .btn-row { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+    .tree-node { padding: 0.2rem 0; font-size: 0.78rem; }
+    .tree-node .icon { margin-right: 0.3rem; }
+    .tree-children { padding-left: 1.5rem; }
+    .tree-asset { display: flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0; }
+    .tree-asset .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .filter-bar input, .filter-bar select { padding: 0.4rem 0.6rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.78rem; }
+    .empty { color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 2rem; }
+</style>
+
+<h1> Panel de Administración</h1>
+<p class="subtitle">Gestión de usuarios, auditoría y jerarquía del sistema.</p>
+
+<div class="tabs">
+    <button class="active" onclick="switchTab('users')" id="tabUsers"> Usuarios</button>
+    <button onclick="switchTab('audit')" id="tabAudit"> Auditoría</button>
+    <button onclick="switchTab('hierarchy')" id="tabHierarchy"> Jerarquía</button>
+</div>
+
+<div class="tab-content active" id="tabUsersContent">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+        <span style="font-size:0.82rem;color:var(--text-muted);">Gestionar cuentas de usuario del sistema.</span>
+        <button class="btn btn-success" onclick="showUserModal()">+ Nuevo</button>
+    </div>
+    <div class="card">
+        <table>
+            <thead><tr><th>ID</th><th>Usuario</th><th>Rol</th><th>Condominio</th><th>Creado</th><th>Acciones</th></tr></thead>
+            <tbody id="userTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="tab-content" id="tabAuditContent">
+    <div class="filter-bar">
+        <input type="text" id="auditFilter" placeholder="Filtrar por usuario o acción..." oninput="loadAudit()">
+        <select id="auditActionFilter" onchange="loadAudit()">
+            <option value="">Todas las acciones</option>
+            <option value="login">Inicio de sesión</option>
+            <option value="cambio_escenario">Cambio de escenario</option>
+            <option value="comando_actuador">Comando actuador</option>
+            <option value="falla_aleatoria">Falla aleatoria</option>
+        </select>
+    </div>
+    <div class="card">
+        <table>
+            <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+            <tbody id="auditTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="tab-content" id="tabHierarchyContent">
+    <div class="card" id="hierarchyTree"></div>
+</div>
+
+<div class="modal-overlay" id="userModal">
+    <div class="modal">
+        <h3 id="userModalTitle">Nuevo Usuario</h3>
+        <div class="form-group">
+            <label>Usuario</label>
+            <input type="text" id="userModalUsername" placeholder="Nombre de usuario">
+        </div>
+        <div class="form-group">
+            <label>Contraseña</label>
+            <input type="password" id="userModalPassword" placeholder="••••••">
+        </div>
+        <div class="form-group">
+            <label>Rol</label>
+            <select id="userModalRole">
+                <option value="technician">Técnico</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Condominio</label>
+            <select id="userModalCondominium"><option value="">Ninguno</option></select>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-warning" onclick="closeUserModal()">Cancelar</button>
+            <button class="btn btn-primary" onclick="saveUser()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let editingUserId = null;
+
+    function switchTab(name) {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(`tab${name.charAt(0).toUpperCase() + name.slice(1)}`).classList.add('active');
+        document.getElementById(`tab${name.charAt(0).toUpperCase() + name.slice(1)}Content`).classList.add('active');
+        if (name === 'users') loadUsers();
+        if (name === 'audit') loadAudit();
+        if (name === 'hierarchy') loadHierarchy();
+    }
+
+    async function loadUsers() {
+        const r = await fetch('/api/admin/users');
+        const users = await r.json();
+        const tbody = document.getElementById('userTableBody');
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin usuarios registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = users.map(u => {
+            const roleLabels = { admin: 'Administrador', supervisor: 'Supervisor', technician: 'Técnico' };
+            return `<tr>
+                <td>${u.id}</td>
+                <td><strong>${u.username}</strong></td>
+                <td><span class="badge ${u.role === 'admin' ? 'badge-high' : u.role === 'supervisor' ? 'badge-medium' : 'badge-low'}">${roleLabels[u.role] || u.role}</span></td>
+                <td style="color:var(--text-muted);">${u.condominium_id ? 'ID: ' + u.condominium_id : '—'}</td>
+                <td style="color:var(--text-dim);font-size:0.7rem;">${u.created_at}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick="editUser(${u.id})">Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')">Eliminar</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function showUserModal(user) {
+        editingUserId = user ? user.id : null;
+        document.getElementById('userModalTitle').textContent = user ? 'Editar Usuario' : 'Nuevo Usuario';
+        document.getElementById('userModalUsername').value = user ? user.username : '';
+        document.getElementById('userModalPassword').value = '';
+        document.getElementById('userModalRole').value = user ? user.role : 'technician';
+        const condoSelect = document.getElementById('userModalCondominium');
+        try {
+            const r = await fetch('/api/hierarchy');
+            const condos = await r.json();
+            condoSelect.innerHTML = '<option value="">Ninguno</option>' +
+                condos.map(c => `<option value="${c.id}" ${user && user.condominium_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+        } catch (e) {
+            condoSelect.innerHTML = '<option value="">Ninguno</option>';
+        }
+        document.getElementById('userModal').classList.add('show');
+    }
+
+    function closeUserModal() {
+        document.getElementById('userModal').classList.remove('show');
+        editingUserId = null;
+    }
+
+    async function saveUser() {
+        const username = document.getElementById('userModalUsername').value.trim();
+        const password = document.getElementById('userModalPassword').value;
+        const role = document.getElementById('userModalRole').value;
+        const condominium_id = document.getElementById('userModalCondominium').value || null;
+        if (!username) { alert('Ingrese un nombre de usuario'); return; }
+        if (!editingUserId && !password) { alert('Ingrese una contraseña'); return; }
+
+        try {
+            if (editingUserId) {
+                const body = { username };
+                if (password) body.password = password;
+                body.role = role;
+                body.condominium_id = condominium_id;
+                await fetch(`/api/admin/users/${editingUserId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+                });
+            } else {
+                await fetch('/api/admin/users', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role, condominium_id })
+                });
+            }
+            closeUserModal();
+            loadUsers();
+        } catch (e) {
+            alert('Error al guardar usuario');
+        }
+    }
+
+    async function editUser(id) {
+        const r = await fetch('/api/admin/users');
+        const users = await r.json();
+        const user = users.find(u => u.id === id);
+        if (user) showUserModal(user);
+    }
+
+    async function deleteUser(id, username) {
+        if (!confirm(`¿Eliminar al usuario "${username}"?`)) return;
+        await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+        loadUsers();
+    }
+
+    async function loadAudit() {
+        const r = await fetch('/api/audit?limit=200');
+        let logs = await r.json();
+        const filter = (document.getElementById('auditFilter').value || '').toLowerCase();
+        const actionFilter = document.getElementById('auditActionFilter').value;
+        if (filter) logs = logs.filter(l => l.username.toLowerCase().includes(filter) || l.action.toLowerCase().includes(filter) || l.detail.toLowerCase().includes(filter));
+        if (actionFilter) logs = logs.filter(l => l.action === actionFilter);
+        const tbody = document.getElementById('auditTableBody');
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty">Sin registros de auditoría</td></tr>';
+            return;
+        }
+        const actionLabels = { login: 'Inicio sesión', cambio_escenario: 'Escenario', comando_actuador: 'Actuador', falla_aleatoria: 'Falla' };
+        tbody.innerHTML = logs.slice(0, 100).map(l => `<tr>
+            <td style="color:var(--text-dim);font-size:0.7rem;white-space:nowrap;">${l.timestamp}</td>
+            <td><strong>${l.username}</strong></td>
+            <td><span class="badge badge-medium">${actionLabels[l.action] || l.action}</span></td>
+            <td style="color:var(--text-muted);">${l.detail}</td>
+        </tr>`).join('');
+    }
+
+    async function loadHierarchy() {
+        const r = await fetch('/api/hierarchy');
+        const data = await r.json();
+        const container = document.getElementById('hierarchyTree');
+        if (data.length === 0) { container.innerHTML = '<div class="empty">Sin jerarquía</div>'; return; }
+
+        const STATUS_COLORS = { high: '#dc2626', medium: '#ca8a04', low: '#22c55e' };
+        const STATUS_LABELS = { high: 'ROJO', medium: 'AMARILLO', low: 'VERDE' };
+
+        container.innerHTML = data.map(c => `
+            <div class="tree-node"><span class="icon"></span> <strong>${c.name}</strong> <span class="badge" style="background:${STATUS_COLORS[c.worst_status]};color:white;">${STATUS_LABELS[c.worst_status]}</span></div>
+            <div class="tree-children">
+                ${c.buildings.map(b => `
+                    <div class="tree-node"><span class="icon"></span> ${b.name}</div>
+                    <div class="tree-children">
+                        ${b.rooms.map(r => `
+                            <div class="tree-node"><span class="icon"></span> ${r.name} <span class="badge" style="background:${STATUS_COLORS[r.worst_status]};color:white;font-size:0.65rem;">${STATUS_LABELS[r.worst_status]}</span></div>
+                            <div class="tree-children">
+                                ${r.assets.map(a => `
+                                    <div class="tree-asset">
+                                        <span class="dot" style="background:${STATUS_COLORS[a.status]}"></span>
+                                        ${a.label} <span style="color:var(--text-dim);font-size:0.7rem;">(${a.score.toFixed(1)})</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    loadUsers();
+    setInterval(loadAudit, 10000);
+</script>
+{% endblock %}

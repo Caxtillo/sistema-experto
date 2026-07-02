@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .sheet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .sheet-grid { grid-template-columns: 1fr; } }
+    .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; border: 1px solid var(--border); }
+    .card h2 { font-size: 0.9rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card table { width: 100%; font-size: 0.78rem; border-collapse: collapse; }
+    .card td, .card th { padding: 0.35rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
+    .card th { color: var(--text-muted); font-weight: 500; width: 40%; }
+    .card td { color: var(--text); }
+    .badge-high { background: #991b1b; color: #fecaca; }
+    .badge-medium { background: #854d0e; color: #fef08a; }
+    .badge-low { background: #166534; color: #bbf7d0; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    .nav-buttons { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .nav-buttons button { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text); font-size: 0.78rem; cursor: pointer; }
+    .nav-buttons button:hover { background: var(--bg-hover); }
+    .nav-buttons button.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .mtbf-value { font-size: 2rem; font-weight: 800; text-align: center; padding: 0.5rem; }
+    .mtbf-unit { font-size: 0.7rem; color: var(--text-muted); text-align: center; }
+    .mtbf-healthy { color: #22c55e; }
+    .mtbf-watch { color: #ca8a04; }
+    .sensor-list { font-size: 0.78rem; }
+    .sensor-list .item { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid var(--border); }
+    .rule-list { font-size: 0.75rem; }
+    .rule-list .item { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .rule-list .item .desc { color: var(--text-muted); }
+    .rule-list .item .consequent { font-weight: 600; }
+    .history-chart { width: 100%; height: 120px; }
+</style>
+
+<h1> Ficha Técnica de Activo</h1>
+<p class="subtitle">Información detallada del activo, sensores, reglas, MTBF y diagnóstico.</p>
+
+<div class="nav-buttons" id="assetNav"></div>
+
+<div id="assetContent">
+    <div style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.85rem;">
+        Seleccione un activo de la lista superior para ver su ficha técnica.
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let currentAssetId = {{ asset_id }};
+    let chart = null;
+
+    async function loadAssetList() {
+        const r = await fetch('/api/assets');
+        const assets = await r.json();
+        const nav = document.getElementById('assetNav');
+        nav.innerHTML = assets.map(a =>
+            `<button class="${a.id === currentAssetId ? 'active' : ''}" onclick="selectAsset(${a.id})">${a.label}</button>`
+        ).join('');
+        if ((!currentAssetId || currentAssetId === 0) && assets.length > 0) {
+            selectAsset(assets[0].id);
+        } else if (currentAssetId > 0) {
+            loadAssetDetail(currentAssetId);
+        }
+    }
+
+    function selectAsset(id) {
+        currentAssetId = id;
+        document.querySelectorAll('#assetNav button').forEach(b => {
+            b.classList.toggle('active', parseInt(b.getAttribute('onclick').match(/\d+/)[0]) === id);
+        });
+        loadAssetDetail(id);
+        window.history.replaceState(null, '', `/asset?id=${id}`);
+    }
+
+    async function loadAssetDetail(id) {
+        const container = document.getElementById('assetContent');
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim);">Cargando...</div>';
+
+        try {
+            const [detailR, mtbfR] = await Promise.all([
+                fetch(`/api/assets/${id}`),
+                fetch(`/api/mtbf/${id}`),
+            ]);
+            const detail = await detailR.json();
+            const mtbf = await mtbfR.json();
+
+            const a = detail.asset;
+            const sensors = detail.sensors;
+            const rules = detail.rules;
+
+            container.innerHTML = `
+                <div class="sheet-grid">
+                    <div class="card">
+                        <h2> Información General</h2>
+                        <table>
+                            <tr><th>Nombre</th><td>${a.label}</td></tr>
+                            <tr><th>Nombre Interno</th><td>${a.name}</td></tr>
+                            <tr><th>Descripción</th><td>${a.description || 'Sin descripción'}</td></tr>
+                            <tr><th>Variable de Salida</th><td>${a.output_label} (${a.output_name})</td></tr>
+                            <tr><th>Rango de Salida</th><td>${a.output_min} - ${a.output_max}</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <h2> MTBF</h2>
+                        <div class="mtbf-value ${mtbf.mtbf_hours > 168 ? 'mtbf-healthy' : 'mtbf-watch'}">
+                            ${mtbf.mtbf_hours.toFixed(1)}
+                        </div>
+                        <div class="mtbf-unit">Horas entre fallas</div>
+                        <table style="margin-top:0.5rem;">
+                            <tr><th>Fallos Registrados</th><td>${mtbf.failure_count}</td></tr>
+                            <tr><th>Estado</th><td><span class="badge ${mtbf.status === 'healthy' ? 'badge-low' : 'badge-medium'}">${mtbf.status === 'healthy' ? 'Saludable' : 'Observación'}</span></td></tr>
+                            <tr><th>MTBF > 168h (7 días)</th><td>${mtbf.mtbf_hours > 168 ? 'Sí' : 'No'}</td></tr>
+                        </table>
+                    </div>
+
+                    <div class="card">
+                        <h2> Sensores (${sensors.length})</h2>
+                        <div class="sensor-list">
+                            ${sensors.map(s => `
+                                <div class="item">
+                                    <span>${s.label} <span style="color:var(--text-dim);font-size:0.7rem;">(${s.unit})</span></span>
+                                    <span style="color:var(--text-muted);">${s.min_val} - ${s.max_val}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2> Reglas (${rules.length})</h2>
+                        <div class="rule-list">
+                            ${rules.map(r => `
+                                <div class="item">
+                                    <div style="display:flex;justify-content:space-between;">
+                                        <span class="consequent">${r.name}</span>
+                                        <span class="badge ${r.enabled ? 'badge-low' : 'badge-medium'}">${r.enabled ? 'Activa' : 'Inactiva'}</span>
+                                    </div>
+                                    <div class="desc">${r.description || ''}</div>
+                                    <div style="color:var(--text-dim);font-size:0.7rem;">
+                                        ${r.antecedents.map(a => `${a.sensor}=${a.term}`).join(r.operator === 'or' ? ' O ' : ' Y ')}
+                                        → <span style="color:${r.consequent.term === 'high' ? '#dc2626' : r.consequent.term === 'medium' ? '#ca8a04' : '#22c55e'}">${r.consequent.term}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--danger);">Error al cargar datos del activo.</div>`;
+        }
+    }
+
+    loadAssetList();
+</script>
+{% endblock %}

@@ -1,0 +1,22 @@
+{
+  "name": "Sistema Experto - Captura de Campo",
+  "short_name": "Captura Campo",
+  "description": "Captura manual de datos de sensores para el Sistema Experto de Gestión de Activos Críticos",
+  "start_url": "/sensor-input",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/sensor-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/static/sensor-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

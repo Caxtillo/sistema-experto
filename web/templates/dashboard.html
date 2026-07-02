@@ -1,0 +1,632 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .summary { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .summary-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 1rem; min-width: 120px; text-align: center; flex: 1; cursor: pointer; transition: all 0.15s; }
+    .summary-item:hover { border-color: var(--accent); }
+    .summary-item .label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+    .summary-item .value { font-size: 1rem; font-weight: 700; margin-top: 0.2rem; }
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .card { background: var(--bg-card); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); transition: opacity 0.2s, border-color 0.3s; cursor: pointer; }
+    .card:hover { border-color: var(--accent); }
+    .card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    .sensor-item { background: var(--bg-body); padding: 0.4rem 0.6rem; border-radius: 5px; }
+    .sensor-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+    .sensor-value { font-size: 1rem; font-weight: 700; margin-top: 0.1rem; }
+    .score-display { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+    .score-bar { flex: 1; height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .score-value { font-size: 1.2rem; font-weight: 800; min-width: 3ch; }
+    .mini-chart { margin-top: 0.4rem; max-height: 50px; width: 100%; }
+    .controls { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .bottom-panels { display: grid; grid-template-columns: 1.8fr 1.2fr 1.2fr 1fr; gap: 1rem; }
+    .panel { background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border); }
+    .panel-header { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; display: flex; justify-content: space-between; }
+    .panel-body { padding: 0.5rem 1rem; max-height: 300px; overflow-y: auto; }
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: var(--bg-body); }
+    .panel-body::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+    .event-item { padding: 0.35rem 0; border-bottom: 1px solid var(--bg-body); font-size: 0.75rem; display: flex; gap: 0.4rem; align-items: flex-start; }
+    .event-item:last-child { border-bottom: none; }
+    .event-time { color: var(--text-dim); min-width: 5ch; font-size: 0.7rem; }
+    .rec-item { padding: 0.3rem 0; font-size: 0.78rem; display: flex; gap: 0.4rem; }
+    .rec-item .bullet { color: var(--accent); }
+    .scenario-btn { padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text); cursor: pointer; font-size: 0.7rem; transition: all 0.15s; }
+    .scenario-btn:hover { background: var(--bg-hover); }
+    .scenario-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .scenario-btn.danger.active { background: var(--danger); border-color: var(--danger); }
+    .explanation-box { background: var(--bg-body); border-radius: 6px; padding: 0.6rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); min-height: 3.2em; display: flex; align-items: center; }
+    .explanation-box strong { color: var(--text); }
+    .timestamp { text-align: center; margin-top: 0.75rem; font-size: 0.7rem; color: var(--text-dim); }
+    .action-item { padding: 0.3rem 0; font-size: 0.72rem; border-bottom: 1px solid var(--bg-body); display: flex; gap: 0.4rem; align-items: center; }
+    .action-item:last-child { border-bottom: none; }
+    .action-time { color: var(--text-dim); min-width: 5ch; font-size: 0.65rem; }
+    .action-actuator { background: var(--bg-body); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; }
+    .alert-modal-body { font-size: 0.9rem; }
+    .alert-modal-body .alert-asset { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .alert-modal-body .alert-detail { color: var(--text-muted); margin-bottom: 0.3rem; }
+    .alert-actions { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    @media (max-width: 1200px) { .bottom-panels { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 800px) { .bottom-panels { grid-template-columns: 1fr; } .asset-grid { grid-template-columns: 1fr; } }
+</style>
+
+<div class="summary" id="summary"></div>
+<div class="asset-grid" id="assetGrid"></div>
+
+<div class="bottom-panels">
+    <div class="panel">
+        <div class="panel-header"><span>Recomendaciones</span><span id="rec-asset" style="color:#64748b;font-size:0.7rem;">--</span></div>
+        <div class="panel-body" id="rec-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Seleccione un activo</div></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><span>Actuadores</span><span id="act-asset" style="color:#64748b;font-size:0.7rem;">--</span></div>
+        <div class="panel-body" id="act-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Seleccione un activo</div></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><span>Eventos</span><span id="event-count" style="color:#64748b;font-size:0.7rem;">0</span></div>
+        <div class="panel-body" id="event-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin eventos</div></div>
+    </div>
+    <div class="panel">
+        <div class="panel-header"><span>Acciones</span><span id="action-count" style="color:#64748b;font-size:0.7rem;">0</span></div>
+        <div class="panel-body" id="action-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin acciones</div></div>
+    </div>
+</div>
+
+<div class="timestamp" id="timestamp">Conectando...</div>
+
+<div class="modal-overlay" id="alertModal">
+    <div class="modal">
+        <h3>🚨 Alerta Crítica</h3>
+        <div class="alert-modal-body" id="alertBody"></div>
+        <div class="alert-actions">
+            <button class="btn" onclick="dismissAlert()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let ws = null;
+let wsFallbackTimer = null;
+let pollingInterval = null;
+let audioCtx = null;
+let alertCooldowns = {};
+let toastCount = 0;
+
+const STATUS_MAP = {
+    high: { cls: 'badge-high', label: 'ROJO', color: '#dc2626' },
+    medium: { cls: 'badge-medium', label: 'AMARILLO', color: '#ca8a04' },
+    low: { cls: 'badge-low', label: 'VERDE', color: '#22c55e' },
+};
+const STATUS_ORDER = { high: 3, medium: 2, low: 1 };
+let charts = {};
+let historyData = {};
+let dataCache = {};
+let assetKeys = [];
+let lastEvents = 0;
+let selectedAsset = null;
+let prevStatuses = {};
+
+function getAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function playTone(freq, duration, type) {
+    if (typeof isMuted !== 'undefined' && isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.value = 0.15;
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+    } catch(e) {}
+}
+
+function playAlert(status) {
+    if (status === 'high') {
+        for (let i = 0; i < 4; i++) {
+            setTimeout(() => playTone(880, 0.15, 'square'), i * 250);
+        }
+    } else if (status === 'medium') {
+        for (let i = 0; i < 2; i++) {
+            setTimeout(() => playTone(660, 0.2, 'sawtooth'), i * 400);
+        }
+    }
+}
+
+function showAlertModal(assetName, assetLabel, status, score, explanation) {
+    const modal = document.getElementById('alertModal');
+    const body = document.getElementById('alertBody');
+    const info = STATUS_MAP[status] || STATUS_MAP.low;
+    body.innerHTML = `
+        <div class="alert-asset" style="color:${info.color}">${assetLabel}</div>
+        <div class="alert-detail"><strong>Estado:</strong> ${info.label}</div>
+        <div class="alert-detail"><strong>Puntaje:</strong> ${score}/100</div>
+        <div class="alert-detail"><strong>Diagnóstico:</strong> ${explanation || 'N/A'}</div>
+    `;
+    modal.classList.add('show');
+    playAlert(status);
+}
+
+function dismissAlert() {
+    document.getElementById('alertModal').classList.remove('show');
+}
+
+function showToast(msg, type) {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    while (c.children.length > 3) c.firstChild.remove();
+    setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, 4000);
+}
+
+function buildSensorGrid(asset, data) {
+    const grid = document.getElementById(`sensors-${asset}`);
+    if (!grid) return;
+    const meta = data.sensors_meta || {};
+    grid.innerHTML = Object.entries(data.sensors || {}).map(([key, val]) => {
+        const m = meta[key] || {};
+        const label = m.label || key;
+        const unit = m.unit || '';
+        return `<div class="sensor-item">
+            <div class="sensor-label">${label}${unit ? ' (' + unit + ')' : ''}</div>
+            <div class="sensor-value" id="${asset}-${key}">${val != null ? Number(val).toFixed(1) : '--'}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderCards(data) {
+    const grid = document.getElementById('assetGrid');
+    assetKeys = Object.keys(data).filter(k => data[k] && data[k].sensors);
+    grid.innerHTML = assetKeys.map(asset => {
+        const d = data[asset];
+        const info = STATUS_MAP[d.status] || STATUS_MAP.low;
+        return `<div class="card ${selectedAsset === asset ? 'selected' : ''}" id="card-${asset}" data-asset="${asset}" style="border-color:${d.status === 'high' ? '#dc2626' : d.status === 'medium' ? '#ca8a04' : ''}">
+            <div class="card-header">
+                <h2>${d.name || asset}</h2>
+                <span class="badge ${info.cls}" id="badge-${asset}">${info.label}</span>
+            </div>
+            <div class="sensor-grid" id="sensors-${asset}"></div>
+            <div class="score-display">
+                <span class="score-value" style="color:${info.color}" id="${asset}-score-val">${d.score}</span>
+                <div class="score-bar"><div class="score-fill" id="${asset}-score-bar" style="width:${Math.min(d.score, 100)}%;background:${info.color}"></div></div>
+            </div>
+            <canvas class="mini-chart" id="chart-${asset}" height="40"></canvas>
+            <div class="explanation-box" id="explain-${asset}"><strong>Diagnóstico:</strong> ${d.explanation || 'Evaluando...'}</div>
+            <div class="controls" id="controls-${asset}"></div>
+        </div>`;
+    }).join('');
+
+    assetKeys.forEach(asset => {
+        const d = data[asset];
+        if (!d) return;
+        buildSensorGrid(asset, d);
+        const controls = document.getElementById(`controls-${asset}`);
+        if (d.scenarios) {
+            controls.innerHTML = d.scenarios.map(s =>
+                `<button class="scenario-btn ${s.id === 'normal' ? '' : 'danger'} ${s.id === d.current_scenario ? 'active' : ''}"
+                    onclick="event.stopPropagation();setScenario('${asset}', '${s.id}')">${s.label}</button>`
+            ).join('');
+        }
+    });
+
+    document.querySelectorAll('.card').forEach(c => {
+        c.addEventListener('click', function(e) {
+            if (e.target.closest('.controls') || e.target.closest('.scenario-btn')) return;
+            const asset = this.dataset.asset;
+            selectAsset(asset);
+        });
+    });
+}
+
+function updateCard(asset, data) {
+    const card = document.getElementById(`card-${asset}`);
+    if (!card) return;
+    const info = STATUS_MAP[data.status] || STATUS_MAP.low;
+    const badge = document.getElementById(`badge-${asset}`);
+    badge.className = `badge ${info.cls}`;
+    badge.textContent = info.label;
+    card.style.borderColor = data.status === 'high' ? '#dc2626' : data.status === 'medium' ? '#ca8a04' : '';
+
+    buildSensorGrid(asset, data);
+
+    document.getElementById(`${asset}-score-val`).textContent = data.score;
+    document.getElementById(`${asset}-score-val`).style.color = info.color;
+    const bar = document.getElementById(`${asset}-score-bar`);
+    bar.style.width = `${Math.min(data.score, 100)}%`;
+    bar.style.background = info.color;
+
+    const ex = document.getElementById(`explain-${asset}`);
+    if (ex) ex.innerHTML = `<strong>Diagnóstico:</strong> ${data.explanation || 'Evaluando...'}`;
+
+    if (charts[asset]) {
+        const ch = charts[asset];
+        if (ch.data.labels.length > 30) {
+            ch.data.labels.shift();
+            ch.data.datasets[0].data.shift();
+        }
+        ch.data.labels.push('');
+        ch.data.datasets[0].data.push(data.score);
+        ch.update('none');
+    }
+
+    const prevStatus = prevStatuses[asset];
+    if (prevStatus && data.status === 'high' && STATUS_ORDER[data.status] > STATUS_ORDER[prevStatus]) {
+        const now = Date.now();
+        if (!alertCooldowns[asset] || now - alertCooldowns[asset] > 30000) {
+            alertCooldowns[asset] = now;
+            showAlertModal(asset, data.name || asset, data.status, data.score, data.explanation);
+        }
+    }
+    prevStatuses[asset] = data.status;
+}
+
+function updateSummary(data) {
+    const summary = document.getElementById('summary');
+    summary.innerHTML = assetKeys.map(asset => {
+        const d = data[asset];
+        if (!d) return '';
+        const info = STATUS_MAP[d.status] || STATUS_MAP.low;
+        return `<div class="summary-item ${selectedAsset === asset ? 'selected' : ''}" onclick="selectAsset('${asset}')">
+            <div class="label">${d.name || asset}</div>
+            <div class="value" style="color:${info.color}">${d.score}</div>
+        </div>`;
+    }).join('');
+}
+
+function selectAsset(asset) {
+    selectedAsset = asset;
+    document.querySelectorAll('.card, .summary-item').forEach(el => {
+        if (el.dataset && el.dataset.asset === asset) el.classList.add('selected');
+        else el.classList.remove('selected');
+    });
+    if (dataCache[asset]) {
+        updateRecs(dataCache[asset]);
+        updateActuators(dataCache[asset]);
+    }
+}
+
+function updateActuators(data) {
+    const list = document.getElementById('act-list');
+    const nameEl = document.getElementById('act-asset');
+    if (!data || !data.actuators || data.actuators.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin actuadores</div>';
+        nameEl.textContent = '--';
+        return;
+    }
+    nameEl.textContent = data.name || '';
+    list.innerHTML = data.actuators.map(a => {
+        const isActive = a.state;
+        const color = isActive ? '#22c55e' : '#64748b';
+        const bg = isActive ? '#14532d' : '#1e293b';
+        const val = a.unit ? `${a.value}${a.unit}` : (isActive ? 'ON' : 'OFF');
+        return `<div class="rec-item" style="align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span>
+            <span style="flex:1;color:var(--text-muted);font-size:0.75rem;">${a.label}</span>
+            <span style="background:${bg};color:${color};padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:600;">${val}</span>
+            ${a.auto ? '<span style="font-size:0.6rem;color:#64748b;margin-left:0.3rem;">AUTO</span>' : ''}
+        </div>`;
+    }).join('');
+}
+
+function updateRecs(data) {
+    const list = document.getElementById('rec-list');
+    const nameEl = document.getElementById('rec-asset');
+    if (!data || !data.recommendations || data.recommendations.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin recomendaciones</div>';
+        nameEl.textContent = '--';
+        return;
+    }
+    nameEl.textContent = data.name || '';
+    list.innerHTML = data.recommendations.map(r =>
+        `<div class="rec-item"><span class="bullet">></span> ${r}</div>`
+    ).join('');
+}
+
+function updateEvents(events) {
+    const list = document.getElementById('event-list');
+    const count = document.getElementById('event-count');
+    count.textContent = events.length;
+    if (events.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin eventos</div>';
+        return;
+    }
+    list.innerHTML = events.slice(-20).reverse().map(e => {
+        const label = e.to === 'fault_sim' ? '⚠ SIMULACIÓN' : `${e.from} → ${e.to}`;
+        const type = e.to === 'fault_sim' ? 'badge-warning' : e.type === 'warning' ? 'badge-medium' : 'badge-low';
+        return `<div class="event-item"><span class="event-time">${e.time}</span><span class="badge ${type}">${label}</span><span>${e.asset_name}</span></div>`;
+    }).join('');
+}
+
+function updateActions(actions) {
+    const list = document.getElementById('action-list');
+    const count = document.getElementById('action-count');
+    count.textContent = actions.length;
+    if (actions.length === 0) {
+        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin acciones</div>';
+        return;
+    }
+    list.innerHTML = actions.slice(0, 20).map(a =>
+        `<div class="action-item">
+            <span class="action-time">${a.time || ''}</span>
+            <span class="action-actuator">${a.actuator_label || a.actuator || ''}</span>
+            <span style="flex:1;color:var(--text-muted);">${a.rule_description || a.description || ''}</span>
+        </div>`
+    ).join('');
+}
+
+async function setScenario(asset, scenario) {
+    try {
+        const r = await fetch(`/api/scenario/${asset}?scenario=${scenario}`, { method: 'POST' });
+        const d = await r.json();
+        const label = d.label || scenario;
+        showToast(`${asset}: ${label}`, scenario === 'normal' ? 'info' : 'warning');
+    } catch(e) {}
+}
+
+async function fetchAll() {
+    try {
+        const [dr, er, ar] = await Promise.all([
+            fetch('/api/data'),
+            fetch('/api/events'),
+            fetch('/api/actions?limit=20')
+        ]);
+        const data = await dr.json();
+        const events = await er.json();
+        const actions = await ar.json();
+        dataCache = data;
+
+        if (events.length > lastEvents && lastEvents > 0) {
+            const newEvents = events.slice(0, events.length - lastEvents);
+            const criticalAlerts = newEvents.filter(e => e.type === 'warning' && e.to === 'high');
+            criticalAlerts.slice(-2).forEach(e => {
+                showToast(`${e.asset_name}: ${e.from} → ${e.to}`, 'warning');
+            });
+        }
+        lastEvents = events.length;
+
+        const keys = Object.keys(data).filter(k => data[k] && data[k].sensors);
+        if (assetKeys.length === 0 || JSON.stringify(keys) !== JSON.stringify(assetKeys)) {
+            renderCards(data);
+            initCharts(data);
+        } else {
+            for (const asset of keys) {
+                if (data[asset]) updateCard(asset, data[asset]);
+            }
+        }
+
+        updateSummary(data);
+
+        if (selectedAsset && data[selectedAsset]) {
+            updateRecs(data[selectedAsset]);
+            updateActuators(data[selectedAsset]);
+        } else if (keys.length > 0) {
+            selectAsset(keys[0]);
+        }
+
+        updateEvents(events);
+        updateActions(actions);
+        document.getElementById('timestamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
+    } catch(e) {}
+}
+
+async function fetchHistory() {
+    for (const asset of assetKeys) {
+        try {
+            const r = await fetch(`/api/history/${asset}`);
+            historyData[asset] = await r.json();
+            if (historyData[asset].length > 0 && charts[asset]) {
+                const ch = charts[asset];
+                ch.data.labels = historyData[asset].map(() => '');
+                ch.data.datasets[0].data = historyData[asset].map(d => d.score);
+                ch.update('none');
+            }
+        } catch(e) {}
+    }
+}
+
+function createChart(asset) {
+    const canvas = document.getElementById(`chart-${asset}`);
+    if (!canvas) return null;
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? '#334155' : '#e2e8f0';
+    return new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: (ctx) => {
+                    if (!ctx.chart.chartArea) return 'transparent';
+                    const g = ctx.chart.ctx.createLinearGradient(0, ctx.chart.chartArea.top, 0, ctx.chart.chartArea.bottom);
+                    g.addColorStop(0, 'rgba(59,130,246,0.3)');
+                    g.addColorStop(1, 'rgba(59,130,246,0)');
+                    return g;
+                },
+                fill: true,
+                tension: 0.3,
+                pointRadius: 0,
+                borderWidth: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: {
+                x: { display: false, grid: { display: false } },
+                y: { display: false, min: 0, max: 100, grid: { display: false } }
+            },
+            animation: { duration: 300 },
+        }
+    });
+}
+
+function initCharts(data) {
+    for (const asset of assetKeys) {
+        if (charts[asset]) {
+            charts[asset].destroy();
+            delete charts[asset];
+        }
+        charts[asset] = createChart(asset);
+    }
+}
+
+function startWebSocket() {
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+    ws.onopen = function() {};
+
+    ws.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            dataCache = data;
+            const keys = Object.keys(data).filter(k => data[k] && data[k].sensors);
+            if (assetKeys.length === 0 || JSON.stringify(keys) !== JSON.stringify(assetKeys)) {
+                renderCards(data);
+                initCharts(data);
+            } else {
+                for (const asset of keys) {
+                    if (data[asset]) updateCard(asset, data[asset]);
+                }
+            }
+            updateSummary(data);
+            if (selectedAsset && data[selectedAsset]) {
+                updateRecs(data[selectedAsset]);
+                updateActuators(data[selectedAsset]);
+            } else if (keys.length > 0) {
+                selectAsset(keys[0]);
+            }
+            document.getElementById('timestamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
+        } catch(e) {}
+    };
+
+    ws.onclose = function() {
+        ws = null;
+        if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
+        wsFallbackTimer = setTimeout(startWebSocket, 10000);
+    };
+
+    ws.onerror = function() {
+        ws && ws.close();
+    };
+}
+
+function populateSimDrawer() {
+    const content = document.getElementById('simDrawerContent');
+    const assets = assetKeys;
+    if (assets.length === 0) {
+        content.innerHTML = '<p style="color:var(--text-dim);font-size:0.8rem;">No hay activos cargados</p>';
+        return;
+    }
+    let html = `<div class="form-group">
+        <label>Activo</label>
+        <select id="simAssetSelect" onchange="updateSimScenarios()">
+            ${assets.map(a => `<option value="${a}">${dataCache[a]?.name || a}</option>`).join('')}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Escenario</label>
+        <div id="simScenarioButtons"></div>
+    </div>
+    <div class="form-group">
+        <label>Inyectar valor (opcional)</label>
+        <div id="simInjectFields"></div>
+    </div>
+    <button class="btn btn-primary" onclick="applySimulation()">Aplicar</button>
+    <button class="btn btn-danger" onclick="triggerRandomFault()" style="margin-top:0.5rem;width:100%;">⚡ Simular Falla Aleatoria</button>`;
+    content.innerHTML = html;
+    updateSimScenarios();
+}
+
+function updateSimScenarios() {
+    const sel = document.getElementById('simAssetSelect');
+    if (!sel) return;
+    const asset = sel.value;
+    const d = dataCache[asset];
+    if (!d || !d.scenarios) return;
+    const btnContainer = document.getElementById('simScenarioButtons');
+    btnContainer.innerHTML = d.scenarios.map(s =>
+        `<button class="scenario-btn ${s.id === 'normal' ? '' : 'danger'} ${s.id === d.current_scenario ? 'active' : ''}"
+            onclick="document.querySelectorAll('#simScenarioButtons .scenario-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');window._simScenario='${s.id}'">${s.label}</button>`
+    ).join('');
+
+    const injectDiv = document.getElementById('simInjectFields');
+    if (d.sensors_meta) {
+        injectDiv.innerHTML = Object.entries(d.sensors_meta).map(([key, meta]) =>
+            `<div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.3rem;">
+                <span style="font-size:0.75rem;min-width:80px;color:var(--text-muted);">${meta.label || key}</span>
+                <input type="number" step="0.1" id="simInject-${key}" placeholder="${meta.unit || ''}" style="width:100px;">
+            </div>`
+        ).join('');
+    }
+    window._simScenario = d.current_scenario || 'normal';
+}
+
+async function applySimulation() {
+    const sel = document.getElementById('simAssetSelect');
+    if (!sel) return;
+    const asset = sel.value;
+    const scenario = window._simScenario || 'normal';
+    await setScenario(asset, scenario);
+
+    const injectData = {};
+    const d = dataCache[asset];
+    if (d && d.sensors_meta) {
+        for (const key of Object.keys(d.sensors_meta)) {
+            const input = document.getElementById(`simInject-${key}`);
+            if (input && input.value !== '') {
+                injectData[key] = parseFloat(input.value);
+            }
+        }
+    }
+    if (Object.keys(injectData).length > 0) {
+        try {
+            await fetch('/api/sensor-data', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({asset_name: asset, values: injectData, sensor_type: 'external'})
+            });
+        } catch(e) {}
+    }
+    showToast(`Simulación aplicada: ${asset}`, 'success');
+}
+
+window.onSimDrawerOpen = function() {
+    populateSimDrawer();
+};
+
+async function triggerRandomFault() {
+    try {
+        const r = await fetch('/api/random-fault', { method: 'POST' });
+        const d = await r.json();
+        showToast(`⚠ ${d.asset_name}: ${d.label}`, 'warning');
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            const data = await (await fetch('/api/data')).json();
+            dataCache = data;
+        }
+    } catch(e) {}
+}
+
+initCharts({});
+pollingInterval = setInterval(fetchAll, 2000);
+startWebSocket();
+setInterval(fetchHistory, 5000);
+fetchAll();
+fetchHistory();
+</script>
+{% endblock %}

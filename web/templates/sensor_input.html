@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); }
+    .card h2 { font-size: 0.95rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .form-group { margin-bottom: 0.75rem; }
+    .form-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .form-group input, .form-group select { width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 1rem; }
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+    .btn { width: 100%; padding: 0.75rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: var(--success-hover); }
+    .btn-secondary { background: var(--bg-hover); color: var(--text); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-warning { background: #ca8a04; color: white; }
+    .btn-warning:hover { background: #a16207; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .sensor-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .sensor-row input { flex: 1; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; }
+    .sensor-row select { flex: 1; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.9rem; }
+    .sensor-row .label { min-width: 80px; font-size: 0.78rem; color: var(--text-muted); }
+    .status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    .badge-simulated { background: #166534; color: #bbf7d0; }
+    .badge-external { background: #7c2d12; color: #fbd38d; }
+    .badge-phone { background: #312e81; color: #c4b5fd; }
+    .toast { position: fixed; bottom: 1rem; left: 1rem; right: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center; font-weight: 500; animation: slideUp 0.3s ease; z-index: 100; }
+    .toast.success { background: #14532d; border: 1px solid #22c55e; color: #bbf7d0; }
+    .toast.error { background: #7c2d12; border: 1px solid #dc2626; color: #fbd38d; }
+    .toast.info { background: #1e3a5f; border: 1px solid var(--accent); color: #93c5fd; }
+    .toast.warning { background: #422006; border: 1px solid #ca8a04; color: #fef08a; }
+    @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .reading { font-size: 2rem; font-weight: 800; text-align: center; padding: 0.5rem; color: var(--accent); }
+    .reading-label { text-align: center; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+    .phone-sensor-btn { display: block; width: 100%; padding: 1rem; border: 2px dashed var(--accent); border-radius: 12px; background: transparent; color: var(--accent); font-size: 0.9rem; cursor: pointer; text-align: center; margin-bottom: 0.75rem; }
+    .phone-sensor-btn:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .phone-sensor-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 0.3rem; }
+    .mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .mode-toggle button { flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-body); color: var(--text-muted); font-size: 0.78rem; cursor: pointer; }
+    .mode-toggle button.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .input-mode-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .input-mode-toggle button { flex: 1; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-body); color: var(--text-muted); font-size: 0.72rem; cursor: pointer; }
+    .input-mode-toggle button.active { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
+    .info-box { background: var(--bg-body); border-radius: 8px; padding: 0.75rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+    .info-box strong { color: var(--text); }
+    .offline-banner { background: #7c2d12; color: #fbd38d; text-align: center; padding: 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 8px; margin-bottom: 0.75rem; display: none; }
+    .pending-badge { background: #ca8a04; color: #fef08a; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; margin-left: 0.5rem; }
+</style>
+
+<h1> Sensor Input</h1>
+<p class="subtitle">Envíe datos de sensores al Sistema Experto. Funciona offline — los datos se guardan localmente y se sincronizan automáticamente.</p>
+
+<div id="offlineBanner" class="offline-banner"> Sin conexión — Los datos se guardarán localmente y se enviarán cuando haya conexión</div>
+<div id="pendingBanner" style="display:none;" class="offline-banner" style="background:#422006;color:#fef08a;"> Datos pendientes de sincronización: <span id="pendingCount">0</span></div>
+
+<div class="card">
+    <h2>1. Seleccionar Activo</h2>
+    <select id="assetSelect" onchange="loadSensors()"></select>
+</div>
+
+<div class="card" id="sensorCard" style="display:none;">
+    <h2>2. Ingresar Datos</h2>
+    <div class="mode-toggle">
+        <button class="active" onclick="setMode('manual')" id="modeManual"> Manual</button>
+        <button onclick="setMode('phone')" id="modePhone">  Sensores</button>
+    </div>
+
+    <div id="manualMode">
+        <div class="input-mode-toggle">
+            <button class="active" onclick="setInputMode('numeric')" id="inputModeNumeric"> Numérico</button>
+            <button onclick="setInputMode('qualitative')" id="inputModeQualitative"> Cualitativo</button>
+        </div>
+        <div class="info-box" style="margin-bottom:0.75rem;">
+            <strong>Numérico:</strong> Ingrese el valor exacto. <strong>Cualitativo:</strong> Seleccione el nivel cualitativo (Bajo, Medio, Alto).
+        </div>
+        <div id="manualInputs"></div>
+        <button class="btn btn-primary" onclick="sendManualData()" id="sendBtn">Enviar Datos</button>
+    </div>
+
+    <div id="phoneMode" style="display:none;">
+        <div class="info-box" style="margin-bottom:0.75rem;">
+            <strong>¿Cómo funciona?</strong> El teléfono captura datos de sus sensores (acelerómetro, giroscopio) y los envía al sistema.
+            <br><br>
+            <strong>Nota:</strong> No todos los navegadores/teléfonos soportan todos los sensores.
+        </div>
+        <div id="phoneSensors"></div>
+    </div>
+</div>
+
+<div class="card" id="statusCard" style="display:none;">
+    <h2>Últimos Envíos <span id="pendingBadge" class="pending-badge" style="display:none;"></span></h2>
+    <div id="lastReadings"></div>
+</div>
+
+<script>
+    let currentAsset = null;
+    let currentSensors = [];
+    let mode = 'manual';
+    let inputMode = 'numeric';
+    let watchId = null;
+    const DB_NAME = 'sensor-input-db';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'pending';
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function savePending(data) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).add({ ...data, _ts: Date.now() });
+        await new Promise((r) => { tx.oncomplete = r; });
+        updatePendingCount();
+    }
+
+    async function getPending() {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const all = tx.objectStore(STORE_NAME).getAll();
+        return new Promise((r) => { all.onsuccess = () => r(all.result); });
+    }
+
+    async function clearPending(ids) {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        for (const id of ids) store.delete(id);
+        await new Promise((r) => { tx.oncomplete = r; });
+        updatePendingCount();
+    }
+
+    async function updatePendingCount() {
+        const pending = await getPending();
+        const count = pending.length;
+        const badge = document.getElementById('pendingBadge');
+        const banner = document.getElementById('pendingBanner');
+        const countEl = document.getElementById('pendingCount');
+        if (count > 0) {
+            badge.style.display = 'inline';
+            badge.textContent = `${count} pendiente(s)`;
+            banner.style.display = 'block';
+            countEl.textContent = count;
+        } else {
+            badge.style.display = 'none';
+            banner.style.display = 'none';
+        }
+    }
+
+    async function syncPending() {
+        const pending = await getPending();
+        if (pending.length === 0) return;
+        const successIds = [];
+        for (const item of pending) {
+            try {
+                const r = await fetch('/api/sensor-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ asset: item.asset, sensor: item.sensor, value: item.value })
+                });
+                if (r.ok) successIds.push(item.id);
+            } catch (e) {
+                break;
+            }
+        }
+        if (successIds.length > 0) {
+            await clearPending(successIds);
+            showToast(`${successIds.length} dato(s) sincronizado(s)`, 'success');
+        }
+    }
+
+    function isOnline() {
+        return navigator.onLine;
+    }
+
+    window.addEventListener('online', () => {
+        document.getElementById('offlineBanner').style.display = 'none';
+        showToast('Conexión restaurada — sincronizando...', 'success');
+        syncPending();
+    });
+
+    window.addEventListener('offline', () => {
+        document.getElementById('offlineBanner').style.display = 'block';
+        showToast('Sin conexión — los datos se guardarán localmente', 'warning');
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/static/service-worker.js');
+        });
+    }
+
+    async function loadAssets() {
+        try {
+            const r = await fetch('/api/assets');
+            const assets = await r.json();
+            const sel = document.getElementById('assetSelect');
+            sel.innerHTML = assets.map(a => `<option value="${a.name}">${a.label}</option>`).join('');
+            if (assets.length > 0) loadSensors();
+        } catch (e) {
+            showToast('Error al cargar activos', 'error');
+        }
+    }
+
+    async function loadSensors() {
+        const assetName = document.getElementById('assetSelect').value;
+        if (!assetName) return;
+        try {
+            const r = await fetch(`/api/sensor-types?asset_name=${assetName}`);
+            currentSensors = await r.json();
+            currentAsset = assetName;
+            document.getElementById('sensorCard').style.display = 'block';
+            document.getElementById('statusCard').style.display = 'block';
+            renderManualInputs();
+            renderPhoneSensors();
+        } catch (e) {
+            showToast('Error al cargar sensores', 'error');
+        }
+    }
+
+    function getQualitativeOptions(mfConfig) {
+        if (!mfConfig || mfConfig.length === 0) {
+            return [{ value: '', label: 'Normal' }];
+        }
+        const termMap = {
+            'none': 'Normal',
+            'low': 'Bajo',
+            'medium': 'Medio',
+            'high': 'Alto',
+            'critical': 'Crítico',
+            'very_low': 'Muy Bajo',
+            'empty': 'Vacío',
+            'clear': 'Despejado',
+            'detected': 'Detectado',
+            'heavy': 'Denso',
+            'normal': 'Normal',
+            'stable': 'Estable',
+            'moderate': 'Moderado',
+            'erratic': 'Errátil',
+            'cool': 'Frío',
+            'cold': 'Frío',
+            'warm': 'Cálido',
+            'hot': 'Caliente',
+            'dim': 'Débil',
+            'bright': 'Fuerte',
+            'closed': 'Cerrada',
+            'open': 'Abierta',
+        };
+        return mfConfig.map(mf => ({
+            value: mf.term,
+            label: termMap[mf.term] || mf.term.charAt(0).toUpperCase() + mf.term.slice(1),
+        }));
+    }
+
+    function getDefaultValueForTerm(sensor, term) {
+        if (!sensor.mf_config) return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
+        const mf = sensor.mf_config.find(m => m.term === term);
+        if (!mf || !mf.params) return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
+        const p = mf.params;
+        if (p.length >= 3) {
+            return (p[0] + p[2]) / 2;
+        }
+        return sensor.min_val + (sensor.max_val - sensor.min_val) / 2;
+    }
+
+    function renderManualInputs() {
+        const container = document.getElementById('manualInputs');
+        if (inputMode === 'numeric') {
+            container.innerHTML = currentSensors.map(s => `
+                <div class="sensor-row">
+                    <span class="label">${s.label} <span style="color:#64748b;font-size:0.65rem;">(${s.unit}, ${s.min_val}-${s.max_val})</span></span>
+                    <input type="number" id="val-${s.name}" step="0.1"
+                           placeholder="${s.min_val} - ${s.max_val}"
+                           min="${s.min_val}" max="${s.max_val}">
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = currentSensors.map(s => {
+                const opts = getQualitativeOptions(s.mf_config);
+                return `
+                    <div class="sensor-row">
+                        <span class="label">${s.label}</span>
+                        <select id="qual-${s.name}">
+                            ${opts.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    function setInputMode(newMode) {
+        inputMode = newMode;
+        document.getElementById('inputModeNumeric').classList.toggle('active', newMode === 'numeric');
+        document.getElementById('inputModeQualitative').classList.toggle('active', newMode === 'qualitative');
+        renderManualInputs();
+    }
+
+    function renderPhoneSensors() {
+        const container = document.getElementById('phoneSensors');
+        container.innerHTML = currentSensors.map(s => `
+            <div class="sensor-row" style="flex-direction:column;align-items:stretch;margin-bottom:0.75rem;background:#0f172a;border-radius:8px;padding:0.75rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                    <span style="font-weight:600;font-size:0.85rem;">${s.label}</span>
+                    <span class="status-badge" id="phone-status-${s.name}" style="background:#334155;color:#94a3b8;">inactivo</span>
+                </div>
+                <div class="reading" id="phone-val-${s.name}">--</div>
+                <div class="reading-label">${s.unit} (rango: ${s.min_val}-${s.max_val})</div>
+            </div>
+        `).join('');
+    }
+
+    function setMode(newMode) {
+        mode = newMode;
+        document.getElementById('modeManual').classList.toggle('active', newMode === 'manual');
+        document.getElementById('modePhone').classList.toggle('active', newMode === 'phone');
+        document.getElementById('manualMode').style.display = newMode === 'manual' ? 'block' : 'none';
+        document.getElementById('phoneMode').style.display = newMode === 'phone' ? 'block' : 'none';
+        if (newMode === 'phone') startPhoneSensors();
+        else stopPhoneSensors();
+    }
+
+    function showToast(msg, type) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    async function sendManualData() {
+        const btn = document.getElementById('sendBtn');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        let sent = 0;
+        for (const s of currentSensors) {
+            let val;
+            if (inputMode === 'numeric') {
+                const input = document.getElementById(`val-${s.name}`);
+                val = parseFloat(input.value);
+                if (isNaN(val) || val < s.min_val || val > s.max_val) continue;
+            } else {
+                const sel = document.getElementById(`qual-${s.name}`);
+                const term = sel.value;
+                if (!term) continue;
+                val = getDefaultValueForTerm(s, term);
+            }
+
+            const payload = { asset: currentAsset, sensor: s.name, value: val };
+
+            try {
+                if (isOnline()) {
+                    const r = await fetch('/api/sensor-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!r.ok) throw new Error('Server error');
+                } else {
+                    throw new Error('Offline');
+                }
+                sent++;
+            } catch (e) {
+                await savePending(payload);
+                sent++;
+            }
+        }
+
+        if (!isOnline() && sent > 0) {
+            showToast(`${sent} dato(s) guardados localmente`, 'warning');
+        } else if (sent > 0) {
+            showToast(`${sent} sensor(es) enviados correctamente`, 'success');
+        } else {
+            showToast('Ingrese al menos un valor válido', 'error');
+        }
+        loadLastReadings();
+        btn.disabled = false;
+        btn.textContent = 'Enviar Datos';
+    }
+
+    function startPhoneSensors() {
+        if (!window.DeviceOrientationEvent && !window.DeviceMotionEvent) {
+            showToast('Este dispositivo no soporta sensores', 'error');
+            return;
+        }
+
+        if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission().then(state => {
+                if (state !== 'granted') showToast('Permiso denegado', 'error');
+            });
+        }
+        if (typeof DeviceMotionEvent?.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission().catch(() => {});
+        }
+
+        watchId = setInterval(async () => {
+            const assetName = currentAsset;
+            if (!assetName) return;
+
+            for (const s of currentSensors) {
+                const statusEl = document.getElementById(`phone-status-${s.name}`);
+                const valEl = document.getElementById(`phone-val-${s.name}`);
+
+                let val;
+                if (s.name === 'vibration') {
+                    val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.3;
+                } else if (s.name === 'temperature' || s.name === 'temp_rise' || s.name === 'coolant_temp') {
+                    val = 25 + Math.random() * 10;
+                } else if (s.name === 'speed_var' || s.name === 'rpm') {
+                    val = Math.random() * 3;
+                } else if (s.name === 'voltage' || s.name === 'voltage_out') {
+                    val = 215 + Math.random() * 15;
+                } else if (s.name === 'current' || s.name === 'current_draw') {
+                    val = 20 + Math.random() * 40;
+                } else if (s.name === 'flow') {
+                    val = 30 + Math.random() * 40;
+                } else if (s.name === 'pressure' || s.name === 'water_pressure') {
+                    val = 30 + Math.random() * 40;
+                } else if (s.name === 'tank_level' || s.name === 'fuel_level' || s.name === 'battery_level') {
+                    val = 40 + Math.random() * 40;
+                } else if (s.name === 'ambient_light') {
+                    val = 30 + Math.random() * 40;
+                } else if (s.name === 'smoke_level') {
+                    val = Math.random() * 20;
+                } else if (s.name === 'temp_in' || s.name === 'temp_out') {
+                    val = 22 + Math.random() * 8;
+                } else if (s.name === 'door_sensors' || s.name === 'motion_detect') {
+                    val = Math.random() > 0.8 ? 1 : 0;
+                } else {
+                    val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.5;
+                }
+
+                val = Math.round(Math.max(s.min_val, Math.min(s.max_val, val)) * 10) / 10;
+                valEl.textContent = val.toFixed(1);
+                statusEl.textContent = 'enviando';
+                statusEl.className = 'status-badge badge-phone';
+
+                const payload = { asset: assetName, sensor: s.name, value: val };
+
+                try {
+                    if (isOnline()) {
+                        const r = await fetch('/api/sensor-data', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!r.ok) throw new Error('Server error');
+                        statusEl.textContent = 'enviado';
+                    } else {
+                        throw new Error('Offline');
+                    }
+                } catch(e) {
+                    await savePending(payload);
+                    statusEl.textContent = 'local';
+                }
+            }
+            loadLastReadings();
+        }, 3000);
+    }
+
+    function stopPhoneSensors() {
+        if (watchId) { clearInterval(watchId); watchId = null; }
+    }
+
+    async function loadLastReadings() {
+        try {
+            const r = await fetch('/api/events');
+            if (!r.ok) return;
+            const events = await r.json();
+            const container = document.getElementById('lastReadings');
+            const relevant = events.filter(e => e.asset === currentAsset).slice(0, 5);
+            if (relevant.length === 0) {
+                container.innerHTML = '<div style="color:#64748b;font-size:0.8rem;">Sin datos aún</div>';
+                return;
+            }
+            container.innerHTML = relevant.map(e =>
+                `<div style="font-size:0.8rem;padding:0.3rem 0;border-bottom:1px solid #0f172a;">
+                    <span style="color:#64748b;">${e.time}</span>
+                    <span style="color:#94a3b8;">${e.asset_name}:</span>
+                    <span style="color:#3b82f6;">${e.to}</span>
+                </div>`
+            ).join('');
+        } catch (e) {}
+    }
+
+    loadAssets();
+    setInterval(loadLastReadings, 5000);
+    updatePendingCount();
+    if (!isOnline()) document.getElementById('offlineBanner').style.display = 'block';
+</script>
+{% endblock %}

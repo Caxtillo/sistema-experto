@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sistema Experto</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 2rem;
+            width: 360px;
+            max-width: 90%;
+        }
+        .login-card h1 {
+            font-size: 1.2rem;
+            margin-bottom: 0.3rem;
+            text-align: center;
+        }
+        .login-card p {
+            font-size: 0.78rem;
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.3rem; }
+        .form-group input {
+            width: 100%; padding: 0.65rem 0.75rem;
+            background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+            color: #e2e8f0; font-size: 0.9rem;
+        }
+        .form-group input:focus { outline: none; border-color: #3b82f6; }
+        .btn {
+            width: 100%; padding: 0.7rem; border: none; border-radius: 8px;
+            font-size: 0.9rem; font-weight: 600; cursor: pointer;
+            background: #3b82f6; color: white; transition: background 0.2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .error { color: #f87171; font-size: 0.78rem; text-align: center; margin-top: 0.75rem; }
+        .hint { font-size: 0.7rem; color: #64748b; text-align: center; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>Sistema Experto</h1>
+        <p>Gestión de Activos Críticos con IIoT</p>
+        <form method="post" action="/login">
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" name="username" placeholder="admin" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" name="password" placeholder="••••••" required>
+            </div>
+            <button type="submit" class="btn">Ingresar</button>
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+        </form>
+        <div class="hint">admin/admin123 · supervisor/super123 · tecnico/tec123</div>
+    </div>
+</body>
+</html>

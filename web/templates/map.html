@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
+    #map { height: 500px; border-radius: 12px; border: 1px solid var(--border); z-index: 1; }
+    .popup-content { font-size: 0.8rem; }
+    .popup-content h3 { margin: 0 0 0.3rem; font-size: 0.9rem; }
+    .popup-content .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.3rem; }
+    .popup-content .building { margin: 0.3rem 0; padding-left: 0.5rem; border-left: 2px solid var(--border); }
+    .popup-content .building h4 { margin: 0; font-size: 0.78rem; color: var(--text); }
+    .popup-content .room { font-size: 0.72rem; color: var(--text-muted); margin: 0.1rem 0; padding-left: 0.5rem; }
+    .popup-content .asset { font-size: 0.72rem; color: var(--text-dim); padding-left: 1rem; }
+    .legend { background: var(--bg-card); padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.72rem; margin-bottom: 0.75rem; border: 1px solid var(--border); display: flex; gap: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.3rem; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+</style>
+
+<h1> Mapa de Condominios</h1>
+<p class="subtitle">Ubicación georeferenciada de condominios con estado de activos en tiempo real. El color del marcador indica el peor estado del condominio.</p>
+
+<div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Verde - Normal</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ca8a04;"></span> Amarillo - Atención</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#dc2626;"></span> Rojo - Crítico</div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const STATUS_COLORS = { high: '#dc2626', medium: '#ca8a04', low: '#22c55e' };
+    const STATUS_LABELS = { high: 'ROJO', medium: 'AMARILLO', low: 'VERDE' };
+    const STATUS_ORDER = { high: 3, medium: 2, low: 1 };
+
+    const map = L.map('map').setView([-12.08, -77.04], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(map);
+
+    async function loadHierarchy() {
+        const r = await fetch('/api/hierarchy');
+        const data = await r.json();
+
+        data.forEach(condo => {
+            if (!condo.lat || !condo.lng) return;
+            const color = STATUS_COLORS[condo.worst_status] || '#22c55e';
+            const label = STATUS_LABELS[condo.worst_status] || 'VERDE';
+
+            const marker = L.circleMarker([condo.lat, condo.lng], {
+                radius: 16, fillColor: color, color: '#fff',
+                weight: 2, opacity: 1, fillOpacity: 0.8
+            }).addTo(map);
+
+            let popupHtml = `<div class="popup-content">
+                <h3>${condo.name}</h3>
+                <div><span class="status-dot" style="background:${color}"></span> Estado: <strong>${label}</strong></div>
+                <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.3rem;">${condo.address || ''}</div>`;
+
+            condo.buildings.forEach(b => {
+                popupHtml += `<div class="building"><h4>${b.name}</h4>`;
+                b.rooms.forEach(r => {
+                    const rColor = STATUS_COLORS[r.worst_status] || '#22c55e';
+                    popupHtml += `<div class="room"><span class="status-dot" style="background:${rColor}"></span>${r.name}</div>`;
+                    r.assets.forEach(a => {
+                        const aColor = STATUS_COLORS[a.status] || '#22c55e';
+                        popupHtml += `<div class="asset"><span class="status-dot" style="background:${aColor}"></span>${a.label}: ${a.score.toFixed(1)}</div>`;
+                    });
+                });
+                popupHtml += `</div>`;
+            });
+
+            popupHtml += `</div>`;
+            marker.bindPopup(popupHtml);
+        });
+
+        if (data.length > 0) {
+            const bounds = data.filter(d => d.lat && d.lng).map(d => [d.lat, d.lng]);
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }
+
+    loadHierarchy();
+    setInterval(loadHierarchy, 10000);
+</script>
+{% endblock %}
