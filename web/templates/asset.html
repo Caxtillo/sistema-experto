@@ -11,31 +11,67 @@
     .card td, .card th { padding: 0.35rem 0.5rem; text-align: left; border-bottom: 1px solid var(--border); }
     .card th { color: var(--text-muted); font-weight: 500; width: 40%; }
     .card td { color: var(--text); }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
     .badge-high { background: #991b1b; color: #fecaca; }
     .badge-medium { background: #854d0e; color: #fef08a; }
     .badge-low { background: #166534; color: #bbf7d0; }
-    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
-    .nav-buttons { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
-    .nav-buttons button { padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); color: var(--text); font-size: 0.78rem; cursor: pointer; }
-    .nav-buttons button:hover { background: var(--bg-hover); }
-    .nav-buttons button.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .nav-hierarchy { margin-bottom: 1rem; }
+    .nav-hierarchy select { width:100%; padding:0.6rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-card); color:var(--text); font-size:0.85rem; outline:none; }
+    .nav-hierarchy select:focus { border-color:var(--accent); }
+    .nav-hierarchy optgroup { font-size:0.8rem; }
+    .nav-hierarchy option { font-size:0.8rem; padding:0.2rem; }
+
     .mtbf-value { font-size: 2rem; font-weight: 800; text-align: center; padding: 0.5rem; }
     .mtbf-unit { font-size: 0.7rem; color: var(--text-muted); text-align: center; }
     .mtbf-healthy { color: #22c55e; }
     .mtbf-watch { color: #ca8a04; }
+
     .sensor-list { font-size: 0.78rem; }
-    .sensor-list .item { display: flex; justify-content: space-between; padding: 0.25rem 0; border-bottom: 1px solid var(--border); }
+    .sensor-list .item { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .sensor-list .item .val { font-weight: 700; font-size: 0.9rem; }
+    .sensor-list .item .range { font-size: 0.65rem; color: var(--text-dim); }
+    .sensor-list .sensor-bar { height: 4px; border-radius: 2px; background: var(--border); margin-top: 0.2rem; position: relative; }
+    .sensor-list .sensor-bar .fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .val-ok { color: #22c55e; }
+    .val-warn { color: #ca8a04; }
+    .val-danger { color: #dc2626; }
+
     .rule-list { font-size: 0.75rem; }
     .rule-list .item { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
     .rule-list .item .desc { color: var(--text-muted); }
     .rule-list .item .consequent { font-weight: 600; }
-    .history-chart { width: 100%; height: 120px; }
+
+    .score-section { text-align: center; padding: 1rem 0; }
+    .score-value { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+    .score-bar-wrap { height: 8px; border-radius: 4px; background: var(--border); margin: 0.5rem 0; overflow: hidden; }
+    .score-bar-wrap .fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+    .score-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .explanation { font-size: 0.78rem; color: var(--text); padding: 0.5rem; background: var(--bg-body); border-radius: 8px; margin-top: 0.5rem; }
+
+    .rec-list { font-size: 0.75rem; }
+    .rec-list .item { padding: 0.3rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: start; gap: 0.4rem; }
+    .rec-list .item::before { content: "\26A0"; font-size: 0.7rem; color: #ca8a04; }
+
+    .act-list { font-size: 0.78rem; }
+    .act-list .item { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+    .act-list .item .state { font-weight: 600; }
+    .state-on { color: #22c55e; }
+    .state-off { color: #94a3b8; }
+
+    .loc-path { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.25rem; }
+    .asset-icon { font-size: 1.2rem; margin-right: 0.3rem; }
+    .chart-wrap { position: relative; height: 200px; width: 100%; margin-top: 0.5rem; }
 </style>
 
 <h1> Ficha Técnica de Activo</h1>
-<p class="subtitle">Información detallada del activo, sensores, reglas, MTBF y diagnóstico.</p>
+<p class="subtitle">Información detallada del activo, sensores, reglas y diagnóstico.</p>
 
-<div class="nav-buttons" id="assetNav"></div>
+<div class="nav-hierarchy">
+    <select id="assetSelect" onchange="selectAsset(this.value)">
+        <option value="">— Seleccionar activo —</option>
+    </select>
+</div>
 
 <div id="assetContent">
     <div style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.85rem;">
@@ -43,111 +79,264 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     let currentAssetId = {{ asset_id }};
-    let chart = null;
+
+    function showError(msg) {
+        document.getElementById('assetContent').innerHTML =
+            '<div style="text-align:center;padding:2rem;color:var(--danger);font-size:0.85rem;">' + msg + '</div>';
+    }
 
     async function loadAssetList() {
-        const r = await fetch('/api/assets');
-        const assets = await r.json();
-        const nav = document.getElementById('assetNav');
-        nav.innerHTML = assets.map(a =>
-            `<button class="${a.id === currentAssetId ? 'active' : ''}" onclick="selectAsset(${a.id})">${a.label}</button>`
-        ).join('');
-        if ((!currentAssetId || currentAssetId === 0) && assets.length > 0) {
-            selectAsset(assets[0].id);
-        } else if (currentAssetId > 0) {
-            loadAssetDetail(currentAssetId);
+        const r = await fetch('/api/hierarchy');
+        if (!r.ok) { console.error('loadHierarchy error:', r.status); showError('Error al cargar la jerarquía (HTTP ' + r.status + ')'); return; }
+        const data = await r.json();
+        if (!data || data.length === 0) { showError('No hay activos disponibles. Verifica que la base de datos tenga datos o reinicia el servidor.'); return; }
+        var sel = document.getElementById('assetSelect');
+        var flat = []; // {id, label, path}
+        data.forEach(function(condo) {
+            var firstInCondo = true;
+            (condo.buildings || []).forEach(function(b) {
+                var firstInBldg = true;
+                (b.rooms || []).forEach(function(rm) {
+                    (rm.assets || []).forEach(function(a) {
+                        if (firstInCondo) {
+                            var optg = document.createElement('optgroup');
+                            optg.label = '\uD83C\uDFE2 ' + (condo.name || '');
+                            sel.appendChild(optg);
+                            firstInCondo = false;
+                        }
+                        var opt = document.createElement('option');
+                        opt.value = a.id;
+                        opt.textContent = '\u00A0\u00A0\u00A0\uD83C\uDFE0 ' + (b.name || '') + ' \u2192 ' + (rm.name || '') + ' \u2192 ' + (a.label || a.name || '');
+                        sel.appendChild(opt);
+                        flat.push(a.id);
+                    });
+                });
+            });
+        });
+        // Auto-select first asset or URL id
+        if (currentAssetId > 0 && flat.includes(currentAssetId)) {
+            sel.value = currentAssetId;
+        } else if (flat.length > 0) {
+            sel.value = flat[0];
         }
+        if (sel.value) selectAsset(parseInt(sel.value));
     }
 
     function selectAsset(id) {
         currentAssetId = id;
-        document.querySelectorAll('#assetNav button').forEach(b => {
-            b.classList.toggle('active', parseInt(b.getAttribute('onclick').match(/\d+/)[0]) === id);
-        });
+        _chartLoaded = false;
         loadAssetDetail(id);
         window.history.replaceState(null, '', `/asset?id=${id}`);
     }
 
+    function statusInfo(status) {
+        if (status === 'high' || status === 'critical') return { cls: 'badge-high', label: 'ROJO', color: '#dc2626' };
+        if (status === 'medium') return { cls: 'badge-medium', label: 'AMARILLO', color: '#ca8a04' };
+        return { cls: 'badge-low', label: 'VERDE', color: '#22c55e' };
+    }
+    function valColor(val, min, max) {
+        if (val == null) return 'var(--text-dim)';
+        var mid = (min + max) / 2;
+        var pct = (val - min) / (max - min);
+        if (pct < 0.25 || pct > 0.75) return '#dc2626';
+        if (pct < 0.4 || pct > 0.6) return '#ca8a04';
+        return '#22c55e';
+    }
+    function valPct(val, min, max) {
+        if (val == null || max === min) return 0;
+        return Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+    }
+
     async function loadAssetDetail(id) {
-        const container = document.getElementById('assetContent');
-        container.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-dim);">Cargando...</div>';
-
+        _chartLoaded = false;
+        var container = document.getElementById('assetContent');
         try {
-            const [detailR, mtbfR] = await Promise.all([
-                fetch(`/api/assets/${id}`),
-                fetch(`/api/mtbf/${id}`),
+            var [detailR, mtbfR] = await Promise.all([
+                fetch('/api/assets/' + id),
+                fetch('/api/mtbf/' + id),
             ]);
-            const detail = await detailR.json();
-            const mtbf = await mtbfR.json();
+            if (!detailR.ok) throw new Error('API error');
+            var d = await detailR.json();
+            var mtbf = await mtbfR.json();
+            renderAsset(container, d, mtbf);
+            _loadChart(d.asset.name);
+        } catch (e) {
+            showError('Error al cargar datos del activo.');
+        }
+    }
 
-            const a = detail.asset;
-            const sensors = detail.sensors;
-            const rules = detail.rules;
+    function renderAsset(container, d, mtbf) {
+        var a = d.asset;
+        var sensors = d.sensors || [];
+        var rules = d.rules || [];
+        var actuators = d.actuators || [];
+        var recs = d.recommendations || [];
+        var sinfo = statusInfo(d.status);
+        var score = d.score || 0;
+        var sourceBadge = d.all_simulated === false
+            ? '<span class="badge badge-low" style="background:#14532d;color:#bbf7d0;">REAL</span>'
+            : '<span class="badge badge-low" style="background:#1e3a5f;color:#93c5fd;">SIM</span>';
 
-            container.innerHTML = `
-                <div class="sheet-grid">
-                    <div class="card">
-                        <h2> Información General</h2>
-                        <table>
-                            <tr><th>Nombre</th><td>${a.label}</td></tr>
-                            <tr><th>Nombre Interno</th><td>${a.name}</td></tr>
-                            <tr><th>Descripción</th><td>${a.description || 'Sin descripción'}</td></tr>
-                            <tr><th>Variable de Salida</th><td>Índice de Salud (${a.output_name})</td></tr>
-                            <tr><th>Rango de IS</th><td>${a.output_min} - ${a.output_max}</td></tr>
-                        </table>
+        container.innerHTML = `
+            <div style="margin-bottom:1rem;">
+                <div class="loc-path">${a.location_path || ''}</div>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <span class="asset-icon">${a.icon === 'zap' ? '\u26A1' : a.icon === 'droplets' ? '\uD83D\uDCA7' : a.icon === 'arrow-up' ? '\u2B06' : '\u2699'}</span>
+                    <span style="font-weight:700;font-size:1.05rem;">${a.label}</span>
+                    <span class="badge ${sinfo.cls}">${sinfo.label}</span>
+                    ${sourceBadge}
+                </div>
+            </div>
+            <div class="sheet-grid">
+                <!-- Score card -->
+                <div class="card">
+                    <h2> \uD83D\uDCCA Índice de Salud (IS)</h2>
+                    <div class="score-section">
+                        <div class="score-value" style="color:${sinfo.color}">${Math.round(score)}</div>
+                        <div class="score-label">/ 100</div>
+                        <div class="score-bar-wrap"><div class="fill" style="width:${Math.min(score, 100)}%;background:${sinfo.color}"></div></div>
                     </div>
+                    ${d.explanation ? '<div class="explanation">' + d.explanation + '</div>' : ''}
+                    <table style="margin-top:0.5rem;">
+                        <tr><th>Variable</th><td>${a.output_label || 'Índice de Salud'}</td></tr>
+                        <tr><th>Rango</th><td>${a.output_min} - ${a.output_max}</td></tr>
+                        <tr><th>Fuente</th><td>${d.data_source === 'real' ? 'Datos reales' : 'Simulación'}</td></tr>
+                    </table>
+                </div>
 
-                    <div class="card">
-                        <h2> MTBF</h2>
-                        <div class="mtbf-value ${mtbf.mtbf_hours > 168 ? 'mtbf-healthy' : 'mtbf-watch'}">
-                            ${mtbf.mtbf_hours.toFixed(1)}
-                        </div>
-                        <div class="mtbf-unit">Horas entre fallas</div>
-                        <table style="margin-top:0.5rem;">
-                            <tr><th>Fallos Registrados</th><td>${mtbf.failure_count}</td></tr>
-                            <tr><th>Estado</th><td><span class="badge ${mtbf.status === 'healthy' ? 'badge-low' : 'badge-medium'}">${mtbf.status === 'healthy' ? 'Saludable' : 'Observación'}</span></td></tr>
-                            <tr><th>MTBF > 168h (7 días)</th><td>${mtbf.mtbf_hours > 168 ? 'Sí' : 'No'}</td></tr>
-                        </table>
+                <!-- MTBF card -->
+                <div class="card">
+                    <h2> \u23F1 MTBF</h2>
+                    <div class="mtbf-value ${mtbf.mtbf_hours > 168 ? 'mtbf-healthy' : 'mtbf-watch'}">
+                        ${mtbf.mtbf_hours ? mtbf.mtbf_hours.toFixed(1) : '—'}
                     </div>
+                    <div class="mtbf-unit">Horas entre fallas</div>
+                    <table style="margin-top:0.5rem;">
+                        <tr><th>Fallos Registrados</th><td>${mtbf.failure_count || 0}</td></tr>
+                        <tr><th>Estado</th><td><span class="badge ${mtbf.status === 'healthy' ? 'badge-low' : 'badge-medium'}">${mtbf.status === 'healthy' ? 'Saludable' : 'Observación'}</span></td></tr>
+                        <tr><th>MTBF > 168h (7 días)</th><td>${mtbf.mtbf_hours > 168 ? 'Sí' : 'No'}</td></tr>
+                    </table>
+                </div>
 
-                    <div class="card">
-                        <h2> Sensores (${sensors.length})</h2>
-                        <div class="sensor-list">
-                            ${sensors.map(s => `
-                                <div class="item">
-                                    <span>${s.label} <span style="color:var(--text-dim);font-size:0.7rem;">(${s.unit})</span></span>
-                                    <span style="color:var(--text-muted);">${s.min_val} - ${s.max_val}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <h2> Reglas (${rules.length})</h2>
-                        <div class="rule-list">
-                            ${rules.map(r => `
-                                <div class="item">
-                                    <div style="display:flex;justify-content:space-between;">
-                                        <span class="consequent">${r.name}</span>
-                                        <span class="badge ${r.enabled ? 'badge-low' : 'badge-medium'}">${r.enabled ? 'Activa' : 'Inactiva'}</span>
-                                    </div>
-                                    <div class="desc">${r.description || ''}</div>
-                                    <div style="color:var(--text-dim);font-size:0.7rem;">
-                                        ${r.antecedents.map(a => `${a.sensor}=${a.term}`).join(r.operator === 'or' ? ' O ' : ' Y ')}
-                                        → <span style="color:${r.consequent.term === 'high' ? '#dc2626' : r.consequent.term === 'medium' ? '#ca8a04' : '#22c55e'}">${r.consequent.term}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
+                <!-- Sensors card -->
+                <div class="card">
+                    <h2> \uD83D\uDEE0 Sensores (${sensors.length})</h2>
+                    <div class="sensor-list">
+                        ${sensors.map(function(s) {
+                            var v = s.value;
+                            var pct = valPct(v, s.min_val, s.max_val);
+                            var vc = valColor(v, s.min_val, s.max_val);
+                            return '<div class="item">' +
+                                '<div><span>' + (s.label || s.name) + ' <span style="color:var(--text-dim);font-size:0.7rem;">(' + (s.unit || '') + ')</span></span>' +
+                                '<div class="sensor-bar"><div class="fill" style="width:' + pct + '%;background:' + vc + '"></div></div>' +
+                                '<span class="range">' + s.min_val + ' - ' + s.max_val + '</span></div>' +
+                                '<span class="val" style="color:' + vc + '">' + (v != null ? (typeof v === 'number' ? v.toFixed(1) : v) : '--') + '</span>' +
+                                '</div>';
+                        }).join('')}
+                        ${sensors.length === 0 ? '<div style="color:var(--text-dim);font-size:0.75rem;">Sin sensores configurados</div>' : ''}
                     </div>
                 </div>
-            `;
-        } catch (e) {
-            container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--danger);">Error al cargar datos del activo.</div>`;
-        }
+
+                <!-- Recommendations card -->
+                <div class="card">
+                    <h2> \uD83D\uDCDD Recomendaciones</h2>
+                    ${recs.length > 0
+                        ? '<div class="rec-list">' + recs.map(function(r) { return '<div class="item">' + r + '</div>'; }).join('') + '</div>'
+                        : '<div style="color:var(--text-dim);font-size:0.75rem;">Sin recomendaciones</div>'}
+                </div>
+
+                <!-- Rules card -->
+                <div class="card">
+                    <h2> \u2699 Reglas (${rules.length})</h2>
+                    <div class="rule-list">
+                        ${rules.map(function(r) {
+                            var antHtml = '';
+                            if (r.antecedents && Array.isArray(r.antecedents)) {
+                                antHtml = r.antecedents.map(function(a) { return a.sensor + '=' + a.term; }).join(r.operator === 'or' ? ' O ' : ' Y ');
+                            }
+                            var termColor = r.consequent && r.consequent.term === 'high' ? '#dc2626' : r.consequent && r.consequent.term === 'medium' ? '#ca8a04' : '#22c55e';
+                            return '<div class="item">' +
+                                '<div style="display:flex;justify-content:space-between;">' +
+                                    '<span class="consequent">' + (r.name || '') + '</span>' +
+                                    '<span class="badge ' + (r.enabled ? 'badge-low' : 'badge-medium') + '">' + (r.enabled ? 'Activa' : 'Inactiva') + '</span>' +
+                                '</div>' +
+                                (r.description ? '<div class="desc">' + r.description + '</div>' : '') +
+                                '<div style="color:var(--text-dim);font-size:0.7rem;">' +
+                                    antHtml +
+                                    (antHtml ? ' → ' : '') +
+                                    '<span style="color:' + termColor + '">' + (r.consequent ? r.consequent.term : '') + '</span>' +
+                                '</div>' +
+                            '</div>';
+                        }).join('')}
+                        ${rules.length === 0 ? '<div style="color:var(--text-dim);font-size:0.75rem;">Sin reglas configuradas</div>' : ''}
+                    </div>
+                </div>
+
+                <!-- Actuators card -->
+                <div class="card">
+                    <h2> \uD83D\uDD28 Actuadores (${actuators.length})</h2>
+                    <div class="act-list">
+                        ${actuators.map(function(act) {
+                            var stateCls = act.state ? (act.state === 'on' || act.state === 'open' ? 'state-on' : 'state-off') : 'state-off';
+                            return '<div class="item">' +
+                                '<span>' + (act.label || act.name) + ' <span style="color:var(--text-dim);font-size:0.7rem;">(' + (act.unit || '') + ')</span></span>' +
+                                '<span class="state ' + stateCls + '">' + (act.state || '—') + '</span>' +
+                                '</div>';
+                        }).join('')}
+                        ${actuators.length === 0 ? '<div style="color:var(--text-dim);font-size:0.75rem;">Sin actuadores configurados</div>' : ''}
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Chart (full-width) -->
+            <div class="card" style="margin-top:1rem;">
+                <h2> \uD83D\uDCC8 Historial de Lecturas</h2>
+                <div style="font-size:0.75rem;color:var(--text-dim);margin-bottom:0.5rem;">Últimas 20 lecturas por sensor</div>
+                <div class="chart-wrap"><canvas id="assetChart"></canvas></div>
+            </div>
+        `;
+
+        _loadChart(a.name);
+    }
+
+    var _chartInstance = null;
+    var _chartLoaded = false;
+    async function _loadChart(assetName) {
+        if (_chartLoaded) return;
+        _chartLoaded = true; // Only try once (even if no data)
+        try {
+            var r = await fetch('/api/history/' + encodeURIComponent(assetName));
+            if (!r.ok) return;
+            var batches = await r.json();
+            if (!batches || batches.length === 0) return;
+
+            var canvas = document.getElementById('assetChart');
+            if (!canvas) return;
+            if (_chartInstance) { _chartInstance.destroy(); _chartInstance = null; }
+
+            var labels = batches.map(function(b) { return b.time; }).reverse();
+            var sensorNames = Object.keys(batches[0].sensors || {});
+            var datasets = sensorNames.map(function(sname, idx) {
+                var colors = ['#3b82f6','#22c55e','#ca8a04','#dc2626','#a855f7','#ec4899','#14b8a6','#f97316'];
+                var data = batches.map(function(b) { return (b.sensors && b.sensors[sname] != null) ? b.sensors[sname] : null; }).reverse();
+                return { label: sname, data: data, borderColor: colors[idx % colors.length], backgroundColor: colors[idx % colors.length] + '33', borderWidth: 2, pointRadius: 2, tension: 0.3, fill: false };
+            });
+
+            _chartInstance = new Chart(canvas, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10, font: { size: 9 } }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { font: { size: 9 } } }
+                    }
+                }
+            });
+        } catch(e) { console.warn('Chart load error:', e); }
     }
 
     loadAssetList();

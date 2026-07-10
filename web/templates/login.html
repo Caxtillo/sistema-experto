@@ -50,13 +50,16 @@
         .btn:hover { background: #2563eb; }
         .error { color: #f87171; font-size: 0.78rem; text-align: center; margin-top: 0.75rem; }
         .hint { font-size: 0.7rem; color: #64748b; text-align: center; margin-top: 1rem; }
+        .status-bar { display:flex; align-items:center; justify-content:center; gap:0.35rem; margin-top:1rem; font-size:0.7rem; }
+        .status-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+        .offline-msg { color:#f87171; font-size:0.75rem; text-align:center; margin-top:0.5rem; display:none; }
     </style>
 </head>
 <body>
     <div class="login-card">
         <h1>Sistema Experto</h1>
         <p>Gestión de Activos Críticos con IIoT</p>
-        <form method="post" action="/login">
+        <form method="post" action="/login" onsubmit="return checkOnline(this)">
             <div class="form-group">
                 <label for="username">Usuario</label>
                 <input type="text" id="username" name="username" placeholder="admin" required autofocus>
@@ -70,7 +73,53 @@
             <div class="error">{{ error }}</div>
             {% endif %}
         </form>
-        <div class="hint">admin/admin123 · supervisor/super123 · tecnico/tec123</div>
+        <div id="loginBlockMsg" style="display:none;color:#f87171;font-size:0.78rem;text-align:center;margin-top:0.5rem;">No puedes iniciar sesión sin conexión al servidor.</div>
+        <div class="hint">admin/admin123 · tec_san_miguel/tec123 · sup_ceiba/sup123 … (técnico/supervisor por condominio)</div>
+        <div class="status-bar">
+            <span class="status-dot" id="loginStatusDot" style="background:#6b7280;"></span>
+            <span id="loginStatusLabel" style="color:#64748b;">Verificando...</span>
+        </div>
+        <div class="offline-msg" id="loginOfflineMsg">Sin conexión al servidor — no puedes iniciar sesión sin conexión a internet.</div>
     </div>
+    <script>
+        function checkOnline(form) {
+            if (!navigator.onLine) {
+                document.getElementById('loginBlockMsg').style.display = 'block';
+                return false;
+            }
+            return true;
+        }
+        (function() {
+            function check() {
+                fetch('/api/health').then(function(r) {
+                    var dot = document.getElementById('loginStatusDot');
+                    var label = document.getElementById('loginStatusLabel');
+                    var msg = document.getElementById('loginOfflineMsg');
+                    if (r.ok) {
+                        if (dot) dot.style.background = '#22c55e';
+                        if (label) label.textContent = 'En línea';
+                        if (msg) msg.style.display = 'none';
+                    } else {
+                        if (dot) dot.style.background = '#ef4444';
+                        if (label) label.textContent = 'Servidor caído';
+                        if (msg) msg.style.display = 'block';
+                    }
+                }).catch(function() {
+                    var dot = document.getElementById('loginStatusDot');
+                    var label = document.getElementById('loginStatusLabel');
+                    var msg = document.getElementById('loginOfflineMsg');
+                    if (dot) dot.style.background = '#ef4444';
+                    if (label) label.textContent = 'Sin conexión';
+                    if (msg) msg.style.display = 'block';
+                });
+            }
+            check();
+            setInterval(check, 5000);
+        })();
+        navigator.serviceWorker?.register('/service-worker.js');
+        navigator.serviceWorker?.ready.then(function(reg) {
+            if (reg.active) reg.active.postMessage({ action: 'auth-login' });
+        });
+    </script>
 </body>
 </html>

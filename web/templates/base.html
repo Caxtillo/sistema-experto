@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Sistema Experto - Activos Críticos</title>
     <style>
@@ -46,21 +47,27 @@
         }
         nav {
             background: var(--bg-nav);
-            padding: 0.7rem 1.5rem;
+            padding: 0.7rem 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border);
             transition: background 0.2s;
+            position: relative;
+            z-index: 100;
         }
-        nav .logo { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+        nav .logo { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
+        .hamburger {
+            display: none; background: none; border: none; color: var(--text);
+            font-size: 1.5rem; cursor: pointer; padding: 0.25rem; line-height: 1;
+        }
         nav .nav-links { display: flex; gap: 0.25rem; align-items: center; }
         nav .nav-links a, nav .nav-links button {
             padding: 0.4rem 0.8rem; border-radius: 6px;
             color: var(--text-muted); text-decoration: none;
             font-size: 0.85rem; transition: all 0.2s;
             background: none; border: none; cursor: pointer;
-            font-family: inherit;
+            font-family: inherit; white-space: nowrap;
         }
         nav .nav-links a:hover, nav .nav-links a.active,
         nav .nav-links button:hover {
@@ -70,6 +77,21 @@
         .user-badge { font-size: 0.75rem; color: var(--text-dim); margin-right: 0.3rem; }
         .theme-toggle { font-size: 1rem; line-height: 1; padding: 0.3rem 0.5rem !important; }
         .container { max-width: 1500px; margin: 0 auto; padding: 1rem; }
+        @media (max-width: 768px) {
+            .hamburger { display: block; }
+            nav .nav-links {
+                display: none; position: absolute; top: 100%; left: 0; right: 0;
+                flex-direction: column; background: var(--bg-nav); gap: 0;
+                padding: 0.25rem 0; border-bottom: 1px solid var(--border);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            nav .nav-links.open { display: flex; }
+            nav .nav-links a, nav .nav-links button {
+                padding: 0.6rem 1rem; border-radius: 0; width: 100%; text-align: left;
+            }
+            .container { padding: 0.75rem; }
+            .drawer { width: 100%; right: -100%; }
+        }
         .btn {
             padding: 0.4rem 0.9rem; border-radius: 6px;
             border: 1px solid var(--border);
@@ -100,10 +122,6 @@
         .badge-high { background: #991b1b; color: #fecaca; }
         .badge-medium { background: #854d0e; color: #fef08a; }
         .badge-low { background: #166534; color: #bbf7d0; }
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; justify-content: center; align-items: center; }
-        .modal-overlay.show { display: flex; }
-        .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .modal h3 { margin-bottom: 1rem; font-size: 1rem; }
         .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.5rem; }
         .toast {
             padding: 0.6rem 1rem; border-radius: 8px;
@@ -117,6 +135,18 @@
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .toast-out { animation: slideOut 0.3s ease forwards; }
         @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+        .install-btn {
+            position: fixed; bottom: 1rem; right: 1rem; z-index: 997;
+            padding: 0.6rem 1rem; border: none; border-radius: 9999px;
+            background: var(--accent); color: white; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.15s;
+            display: none;
+        }
+        .install-btn.show { display: none; }
+        @media (pointer: coarse) { .install-btn.show { display: block; } }
+        .install-btn:hover { transform: scale(1.05); }
+        .install-btn:active { transform: scale(0.95); }
         .drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 998; }
         .drawer-overlay.show { display: block; }
         .drawer { position: fixed; top: 0; right: -400px; width: 380px; height: 100%; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 999; transition: right 0.3s ease; overflow-y: auto; padding: 1rem; }
@@ -134,30 +164,32 @@
 </head>
 <body>
     <nav>
-        <div class="logo">⚡ Sistema Experto - Activos Críticos</div>
-        <div class="nav-links">
-            <a href="/">Dashboard</a>
-            <a href="/config">Configuración</a>
+        <div class="logo"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg> Sistema Experto</div>
+        <button class="hamburger" id="hamburgerBtn" onclick="toggleNav()" aria-label="Menú">☰</button>
+        <div class="nav-links" id="navLinks">
+            <a href="/" data-offline-hide>Dashboard</a>
+            <a href="/config" data-offline-hide style="display:none;">Configuración</a>
             <a href="/sensor-input">Sensor Input</a>
-            <a href="/map">Mapa</a>
-            <a href="/asset">Ficha Técnica</a>
-            <a href="/reports">Reportes</a>
-            <a href="/admin" id="adminNavLink" style="display:none;">Admin</a>
-            <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema">☀️</button>
-            <button onclick="toggleSimDrawer()" title="Simulación" style="font-size:1rem;padding:0.3rem 0.5rem !important;">🔧</button>
-            <button id="muteBtn" onclick="toggleMute()" title="Silenciar alarmas" style="font-size:1rem;padding:0.3rem 0.5rem !important;">🔊</button>
+            <a href="/map" data-offline-hide>Mapa</a>
+            <a href="/asset" data-offline-hide>Ficha Técnica</a>
+            <a href="/reports" data-offline-hide>Reportes</a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg></button>
+            <button onclick="toggleSimDrawer()" title="Simulación" data-offline-hide style="display:inline-flex;align-items:center;justify-content:center;padding:0.3rem 0.5rem !important;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></button>
+            <button id="muteBtn" onclick="toggleMute()" title="Silenciar alarmas" style="display:inline-flex;align-items:center;justify-content:center;padding:0.3rem 0.5rem !important;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></button>
             <span class="user-badge" id="userBadge" data-role="{{ role or '' }}"></span>
-            <a href="/logout" style="color:var(--text-dim);font-size:0.75rem;">Salir</a>
+            <span id="offlineIndicator" style="display:inline-flex;align-items:center;gap:0.25rem;font-size:0.68rem;color:var(--text-muted);"><span id="offlineDot" style="width:7px;height:7px;border-radius:50%;background:#6b7280;display:inline-block;"></span><span id="offlineLabel">Verificando...</span></span>
+            <a href="/logout" data-offline-hide style="color:var(--text-dim);font-size:0.75rem;" onclick="localStorage.removeItem('isLoggedIn');if(navigator.serviceWorker&&navigator.serviceWorker.controller){navigator.serviceWorker.controller.postMessage({action:'auth-logout'})}">Salir</a>
         </div>
     </nav>
     <div class="toast-container" id="toastContainer"></div>
     <div class="container" id="mainContent">
         {% block content %}{% endblock %}
     </div>
+    <button class="install-btn" id="installBtn" onclick="installPWA()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:0.3rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Instalar App</button>
     <div class="drawer-overlay" id="simDrawerOverlay" onclick="toggleSimDrawer()"></div>
     <div class="drawer" id="simDrawer">
         <button class="drawer-close" onclick="toggleSimDrawer()">&times;</button>
-        <h3>🔧 Simulador de Escenarios</h3>
+        <h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:0.3rem;"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg> Simulador de Escenarios</h3>
         <div id="simDrawerContent" style="margin-top:0.5rem;">
             <p style="color:var(--text-dim);font-size:0.8rem;">Cargando...</p>
         </div>
@@ -165,6 +197,31 @@
     <script>
         const MUTED_KEY = 'opencode_muted';
         let isMuted = localStorage.getItem(MUTED_KEY) === '1';
+
+        // ── Auth guardian (localStorage-based, runs before anything else) ──
+        var _user = "{{ user or '' }}";
+        if (_user) {
+            localStorage.setItem('isLoggedIn', 'true');
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(function(reg) {
+                    if (reg.active) reg.active.postMessage({ action: 'auth-login' });
+                });
+            }
+        }
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = '/login';
+        }
+
+        function toggleNav() {
+            document.getElementById('navLinks').classList.toggle('open');
+        }
+        document.addEventListener('click', function(e) {
+            const nav = document.getElementById('navLinks');
+            const btn = document.getElementById('hamburgerBtn');
+            if (nav.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+                nav.classList.remove('open');
+            }
+        });
 
         function toggleTheme() {
             const html = document.documentElement;
@@ -177,7 +234,10 @@
         function toggleMute() {
             isMuted = !isMuted;
             localStorage.setItem(MUTED_KEY, isMuted ? '1' : '0');
-            document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🔊';
+            const btn = document.getElementById('muteBtn');
+            btn.innerHTML = isMuted
+                ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+                : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
         }
 
         window.toggleSimDrawer = function() {
@@ -189,12 +249,157 @@
             if (!isOpen && window.onSimDrawerOpen) window.onSimDrawerOpen();
         };
 
+        function showToast(msg, type) {
+            const c = document.getElementById('toastContainer');
+            if (!c) return;
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            c.appendChild(t);
+            while (c.children.length > 3) c.firstChild.remove();
+            setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, 4000);
+        }
+
+        // PWA install
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').classList.add('show');
+        });
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installBtn').classList.remove('show');
+            deferredPrompt = null;
+            showToast('App instalada', 'success');
+        });
+        window.installPWA = function() {
+            if (deferredPrompt) { deferredPrompt.prompt(); }
+            else { showToast('Chrome: menú ⋮ → Agregar a pantalla de inicio', 'info'); }
+        };
+
         (function() {
-            document.getElementById('muteBtn').textContent = isMuted ? '🔇' : '🔊';
+            const muteBtn = document.getElementById('muteBtn');
+            muteBtn.innerHTML = isMuted
+                ? '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+                : '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
             const badge = document.getElementById('userBadge');
             const role = badge ? badge.getAttribute('data-role') : '';
             const adminLink = document.getElementById('adminNavLink');
-            if (adminLink && role === 'admin') adminLink.style.display = '';
+            if (adminLink && (role === 'admin' || role === 'supervisor')) adminLink.style.display = '';
+
+            // Register SW
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var r of regs) {
+                        if (r.active && r.active.scriptURL.indexOf('/static/service-worker.js') !== -1) {
+                            r.unregister();
+                        }
+                    }
+                });
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/service-worker.js').then(async function(reg) {
+                        // Web Push subscription
+                        try {
+                            const pkResp = await fetch('/api/push/public-key');
+                            const pkData = await pkResp.json();
+                            const key = pkData.public_key;
+                            if (key && reg.pushManager) {
+                                const sub = await reg.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey: key,
+                                });
+                                await fetch('/api/push/subscribe', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(sub.toJSON()),
+                                });
+                            }
+                        } catch(e) {}
+                    });
+                });
+            }
+            function updateOnlineStatus() {
+                var dot = document.getElementById('offlineDot');
+                var label = document.getElementById('offlineLabel');
+                var isOnline = navigator.onLine;
+                if (dot) dot.style.background = isOnline ? '#22c55e' : '#dc2626';
+                if (label) label.textContent = isOnline ? 'En línea' : 'Sin conexión';
+                if (!isOnline) {
+                    document.querySelectorAll('[data-offline-hide]').forEach(function(el) { el.style.display = 'none'; });
+                }
+            }
+            (function() {
+                document.querySelectorAll('[data-offline-hide]').forEach(function(el) { el.style.display = 'none'; });
+            })();
+            function checkServer() {
+                var dot = document.getElementById('offlineDot');
+                var label = document.getElementById('offlineLabel');
+                if (!navigator.onLine) {
+                    if (dot) dot.style.background = '#dc2626';
+                    if (label) label.textContent = 'Sin conexión';
+                    document.querySelectorAll('[data-offline-hide]').forEach(function(el) { el.style.display = 'none'; });
+                    return;
+                }
+                var ctrl = new AbortController();
+                setTimeout(function() { ctrl.abort(); }, 2000);
+                fetch('/api/health', { signal: ctrl.signal }).then(function(r) {
+                    if (dot) dot.style.background = r.ok ? '#22c55e' : '#dc2626';
+                    if (label) label.textContent = r.ok ? 'En línea' : 'Servidor caído';
+                    if (r.ok) {
+                        document.querySelectorAll('[data-offline-hide]').forEach(function(el) { el.style.display = ''; });
+                    }
+                }).catch(function() {
+                    if (dot) dot.style.background = '#dc2626';
+                    if (label) label.textContent = 'Servidor caído';
+                    document.querySelectorAll('[data-offline-hide]').forEach(function(el) { el.style.display = 'none'; });
+                });
+            }
+            checkServer();
+            setInterval(checkServer, 5000);
+            window.addEventListener('online', function() { checkServer(); updateOnlineStatus(); });
+            window.addEventListener('offline', function() { checkServer(); updateOnlineStatus(); });
+
+            // Global pending sync: flush IndexedDB data when online
+            async function _globalSyncPending() {
+                if (!navigator.onLine) return;
+                try {
+                    const db = await new Promise((resolve, reject) => {
+                        const req = indexedDB.open('sensor-input-db', 2);
+                        req.onupgradeneeded = (e) => {
+                            const db = e.target.result;
+                            if (!db.objectStoreNames.contains('pending'))
+                                db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
+                            if (!db.objectStoreNames.contains('pages'))
+                                db.createObjectStore('pages', { keyPath: 'path' });
+                        };
+                        req.onsuccess = () => resolve(req.result);
+                        req.onerror = () => reject(req.error);
+                    });
+                    const tx = db.transaction('pending', 'readonly');
+                    const all = tx.objectStore('pending').getAll();
+                    const items = await new Promise(r => { all.onsuccess = () => r(all.result || []); });
+                    if (items.length === 0) return;
+                    const successIds = [];
+                    for (const item of items) {
+                        try {
+                            const r = await fetch('/api/sensor-data', {
+                                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({ asset: item.asset, sensor: item.sensor, value: item.value, captured_at: item._capturedAt || Date.now(), sync_uuid: item._sync_uuid || (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2, 10)) })
+                            });
+                            if (r.ok) successIds.push(item.id);
+                        } catch(e) {}
+                    }
+                    if (successIds.length > 0) {
+                        const delTx = db.transaction('pending', 'readwrite');
+                        for (const id of successIds) delTx.objectStore('pending').delete(id);
+                        await new Promise(r => { delTx.oncomplete = r; });
+                        if (typeof showToast === 'function') showToast(`${successIds.length} dato(s) sincronizado(s)`, 'success');
+                    }
+                } catch(e) {}
+            }
+            window.addEventListener('online', () => setTimeout(_globalSyncPending, 1000));
+            setTimeout(_globalSyncPending, 2000);
         })();
     </script>
 </body>

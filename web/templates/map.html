@@ -5,6 +5,7 @@
     h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
     .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
     #map { height: 500px; border-radius: 12px; border: 1px solid var(--border); z-index: 1; }
+    @media (max-width: 768px) { #map { height: 300px; } .legend { flex-wrap: wrap; gap: 0.5rem; } }
     .popup-content { font-size: 0.8rem; }
     .popup-content h3 { margin: 0 0 0.3rem; font-size: 0.9rem; }
     .popup-content .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.3rem; }
@@ -34,7 +35,7 @@
     const STATUS_LABELS = { high: 'ROJO', medium: 'AMARILLO', low: 'VERDE' };
     const STATUS_ORDER = { high: 3, medium: 2, low: 1 };
 
-    const map = L.map('map').setView([-12.08, -77.04], 13);
+    const map = L.map('map').setView([9.80, -63.161], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
@@ -83,6 +84,6 @@
     }
 
     loadHierarchy();
-    setInterval(loadHierarchy, 10000);
+    setInterval(loadHierarchy, 3000);
 </script>
 {% endblock %}

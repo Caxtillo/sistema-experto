@@ -1,0 +1,128 @@
+# ISSUES DETECTADOS - Condominium Expert vs especificaciones.txt
+# Todos resueltos en la sesión del 2026-07-08
+
+---
+
+## 🔴 CRÍTICOS
+
+### 1. BD se borra en cada reinicio
+- Original: `init_db()` ejecutaba `drop_all()` + `create_all()`
+- Impacto: Todos los datos se perdían al reiniciar
+- ✅ **Resuelto**: `init_db()` solo hace `create_all()`, nunca dropea tablas
+- Archivos tocados: `storage/database.py`
+- Fecha: 2026-07-08
+
+### 2. Contraseñas sin salt
+- Original: `hashlib.sha256(password.encode()).hexdigest()`
+- Impacto: Vulnerable a rainbow tables
+- ✅ **Resuelto**: PBKDF2-SHA256 con salt aleatorio de 16 bytes, 100k iteraciones
+- Archivos tocados: `app.py` (funciones `_hash()` y `_verify_password()`)
+- Fecha: 2026-07-08
+
+### 3. Sin tests del core del sistema
+- Original: Solo 16 tests del motor de inferencia. Cero tests de API, KB, Simulator, WebSocket, auth
+- ✅ **Resuelto**: 81 tests (17 inference + 38 knowledge_base + 26 simulator)
+- Archivos tocados: `tests/test_knowledge_base.py`, `tests/test_simulator.py`
+- Dependencias: `pytest`, `pytest-asyncio`, `pytest-httpx`
+- Fecha: 2026-07-08
+
+## ⚠️ INCUMPLIMIENTO DE REQUISITOS
+
+### 4. Sincronización automática offline→online (RF-06)
+- Original: Cola offline en IndexedDB sin lógica de reenvío automático
+- ✅ **Resuelto**: Service Worker encola POSTs fallidos a IndexedDB con `sync_uuid`; replay en eventos `online` y `activate`
+- Archivos tocados: `static/service-worker.js`, `static/manifest.json`
+- Fecha: 2026-07-08
+
+### 5. Control de duplicados en sincronización (RNF-02)
+- Original: Sin idempotency keys
+- ✅ **Resuelto**: Columna `sync_uuid` (VARCHAR(36), UNIQUE) en `SensorReading`, migración automática en `init_db()`, SW genera UUID por cada POST offline
+- Archivos tocados: `models/models.py`, `storage/database.py`, `core/knowledge_base.py`, `web/api.py`
+- Fecha: 2026-07-08
+
+## 🛡️ SEGURIDAD
+
+### 6. Sin HTTPS/TLS propio
+- No se implementó (depende de Cloudflare tunnel, fuera del alcance del código)
+- ⏭️ **No resuelto** — no es issue de código
+
+### 7. Sin CSRF protection
+- No se implementó
+- ⏭️ **No resuelto** — issue de seguridad menor, no solicitado
+
+### 8. Sin rate limiting
+- Original: Endpoints `/api/` sin protección contra abuso
+- ✅ **Resuelto**: slowapi integrado con límites: global 60/min, `/api/sensor-data` 20/min, `/login` 10/min
+- Dependencias: `slowapi`
+- Archivos tocados: `web/limits.py` (nuevo), `app.py`, `web/api.py`
+- Fecha: 2026-07-08
+
+### 9. Notificaciones push
+- Original: Sin alertas cuando activo cambia a ROJO
+- ✅ **Resuelto**: VAPID keys auto-generadas, suscripción vía SW, `send_push()` en cambios de estado ROJO/AMARILLO, dashboard alerta con sonido + toast + Notification API
+- Archivos tocados: `web/push_notify.py` (nuevo), `web/api.py`, `static/service-worker.js`, `web/templates/dashboard.html`
+- Fecha: 2026-07-08
+
+## 🐛 BUGS
+
+### 10. Mapa centrado en Lima, Perú
+- Original: `[12.1, -77.0]` (Lima)
+- ✅ **Resuelto**: Cambiado a `[9.75, -63.17]` (Maturín)
+- Archivos tocados: `web/templates/map.html`
+- Fecha: 2026-07-08
+
+### 11. Duplicación de UI de usuarios
+- Original: `/config/users` y `/admin` con UI similar
+- ✅ **Resuelto**: `/admin` ya no redirige, renderiza `admin.html` directo con tabs (usuarios, auditoría, jerarquía)
+- Archivos tocados: `app.py`, `web/templates/admin.html`
+- Fecha: 2026-07-08
+
+## 📋 MEJORAS
+
+### 12. Paginación en auditoría
+- Original: `admin.html` cargaba toda la auditoría sin límite
+- ✅ **Resuelto**: Paginación server-side con `offset`/`limit` + botones prev/next en admin.html
+- Archivos tocados: `web/api.py`, `core/knowledge_base.py`, `web/templates/admin.html`
+- Fecha: 2026-07-08
+
+### 13. Exportación PDF nativa
+- Original: Solo HTML imprimible, no PDF
+- ✅ **Resuelto**: Endpoint `GET /api/report/pdf` genera PDF vía `xhtml2pdf`; botón PDF rojo en reports.html
+- Dependencias: `xhtml2pdf`
+- Archivos tocados: `web/api.py`, `web/templates/reports.html`
+- Fecha: 2026-07-08
+
+### 14. Documentación modular insuficiente (RNF-06)
+- Original: Sin docstrings, sin documentación de API
+- ✅ **Resuelto**: Docstrings en todos los `__init__.py` (6 paquetes) + `docs/ARCHITECTURE.md` con diagrama, módulos, flujo de datos, guía de extensión
+- Archivos tocados: `core/__init__.py`, `iiot_simulator/__init__.py`, `models/__init__.py`, `storage/__init__.py`, `web/__init__.py`, `scripts/__init__.py`, `docs/ARCHITECTURE.md` (nuevo)
+- Fecha: 2026-07-08
+
+---
+
+## Resumen de la Sesión
+
+Se corrigieron **13 issues** (1 crítico + 4 funcionales + 3 seguridad + 3 bugs + 2 mejoras):
+
+| # | Issue | Archivos tocados | Nuevas dependencias |
+|---|-------|-----------------|---------------------|
+| 1 | BD persistente | `database.py` | — |
+| 2 | Contraseñas salt | `app.py` | — |
+| 3 | Tests (81) | `test_*.py` | `pytest-asyncio`, `pytest-httpx` |
+| 4 | Offline sync | `service-worker.js`, `manifest.json` | — |
+| 5 | sync_uuid dedup | `models.py`, `database.py`, `kb.py`, `api.py` | — |
+| 8 | Rate limiting | `limits.py` (nuevo), `app.py`, `api.py` | `slowapi` |
+| 9 | Push notifications | `push_notify.py` (nuevo), `api.py`, `sw.js`, `dashboard.html` | `pywebpush` |
+| 10 | Mapa Maturín | `map.html` | — |
+| 11 | UI /admin vs /config | `app.py`, `admin.html` | — |
+| 12 | Paginación auditoría | `api.py`, `kb.py`, `admin.html` | — |
+| 13 | PDF nativo | `api.py`, `reports.html` | `xhtml2pdf` |
+| 14 | Documentación | `__init__.py` ×6, `docs/ARCHITECTURE.md` | — |
+
+**Tests**: 81 passed, 0 failed, 0 skipped
+**Archivos nuevos**: `web/limits.py`, `web/push_notify.py`, `docs/ARCHITECTURE.md`
+**Dependencias nuevas**: `slowapi`, `pywebpush`, `xhtml2pdf`, `pytest-asyncio`, `pytest-httpx`
+
+Issues **NO resueltos** (dejados intencionalmente fuera de alcance):
+- #6 HTTPS/TLS propio (gestionado por Cloudflare tunnel)
+- #7 CSRF protection (no solicitado, riesgo menor en app interna)

@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .page-header h2 { font-size: 1.1rem; }
+    .page-header .links { display: flex; gap: 0.5rem; }
+    .page-header .links a { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
+    .page-header .links a:hover { text-decoration: underline; }
+    .hierarchy-tree { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .hierarchy-item { display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.5rem; border-radius: 4px; font-size: 0.82rem; }
+    .hierarchy-item:hover { background: var(--bg-body); }
+    .hierarchy-item .h-name { flex: 1; font-weight: 500; }
+    .hierarchy-item .h-actions { display: flex; gap: 0.3rem; opacity: 0; transition: opacity 0.15s; }
+    .hierarchy-item:hover .h-actions { opacity: 1; }
+    .hierarchy-item .h-actions button { padding: 0.15rem 0.35rem; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; }
+    .hierarchy-item .h-actions button:hover { border-color: var(--accent); color: var(--text); }
+    .hierarchy-item .h-actions .h-del:hover { border-color: var(--danger); color: var(--danger); }
+    .inline-form { background: var(--bg-body); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin: 0.5rem 0; display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .inline-form .form-group { margin-bottom: 0; }
+    .inline-form input, .inline-form select { font-size: 0.78rem; padding: 0.3rem 0.5rem; }
+    .section-title { font-size: 0.85rem; color: var(--text); font-weight: 600; margin: 1rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.4rem; }
+    .section-desc { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.75rem; }
+</style>
+
+<div class="page-header">
+    <h2><i class="fas fa-sitemap" style="color:var(--accent);"></i> Gestionar Jerarquía</h2>
+    <div class="links">
+        <a href="/config"><i class="fas fa-cog"></i> Configuración</a>
+        <a href="/config/assets"><i class="fas fa-plus-circle"></i> Activos</a>
+    </div>
+</div>
+
+<div class="section-desc">
+    Administre condominios, edificios, salas y activos. Pase el mouse sobre un elemento para ver las opciones.
+</div>
+
+<div class="hierarchy-tree">
+    <div style="margin-bottom:0.75rem;">
+        <button class="btn btn-sm btn-success" onclick="showAddCondoForm()"><i class="fas fa-plus"></i> Condominio</button>
+    </div>
+    <div id="hierarchyTreeContainer"></div>
+</div>
+
+<div id="inlineFormContainer"></div>
+
+{% if assets_json %}
+<script>window._hierarchyAssets = {{ assets_json | tojson }};</script>
+{% else %}
+<script>window._hierarchyAssets = [];</script>
+{% endif %}
+
+<script>
+function showToast(msg, type) {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, 4000);
+}
+
+async function loadHierarchy() {
+    const r = await fetch('/api/hierarchy');
+    const data = await r.json();
+    let html = '';
+    for (const c of data) {
+        const cName = c.name.replace(/'/g, "\\'");
+        html += `<div class="hierarchy-item" style="padding-left:0.5rem;">
+            <i class="fas fa-building" style="color:var(--accent);"></i>
+            <span class="h-name">${c.name}</span>
+            <span class="h-actions">
+                <button onclick="showEditCondoForm(${c.id},'${cName}')" title="Editar"><i class="fas fa-edit"></i></button>
+                <button onclick="confirmDeleteCondo(${c.id})" class="h-del" title="Eliminar"><i class="fas fa-trash"></i></button>
+                <button onclick="showAddBuildingForm(${c.id})" title="Agregar edificio"><i class="fas fa-plus"></i></button>
+            </span>
+        </div>`;
+        for (const b of c.buildings) {
+            const bName = b.name.replace(/'/g, "\\'");
+            html += `<div class="hierarchy-item" style="padding-left:2rem;">
+                <i class="fas fa-building" style="color:var(--text);opacity:0.7;"></i>
+                <span class="h-name">${b.name}</span>
+                <span class="h-actions">
+                    <button onclick="showEditBuildingForm(${b.id},'${bName}')" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button onclick="confirmDeleteBuilding(${b.id})" class="h-del" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    <button onclick="showAddRoomForm(${b.id})" title="Agregar sala"><i class="fas fa-plus"></i></button>
+                </span>
+            </div>`;
+            for (const r of b.rooms) {
+                const rName = r.name.replace(/'/g, "\\'");
+                const assetCount = (r.assets || []).length;
+                html += `<div class="hierarchy-item" style="padding-left:3.5rem;">
+                    <i class="fas fa-folder" style="color:var(--text-muted);"></i>
+                    <span class="h-name">${r.name} <span style="font-size:0.7rem;color:var(--text-dim);">(${assetCount} activos)</span></span>
+                    <span class="h-actions">
+                        <button onclick="showEditRoomForm(${r.id},'${rName}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button onclick="confirmDeleteRoom(${r.id})" class="h-del" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </span>
+                </div>`;
+            }
+        }
+    }
+    document.getElementById('hierarchyTreeContainer').innerHTML = html || '<div class="empty-state">Sin condominios. Cree el primero.</div>';
+}
+
+function showInlineForm(html) {
+    document.getElementById('inlineFormContainer').innerHTML = html;
+}
+
+function hideInlineForm() {
+    document.getElementById('inlineFormContainer').innerHTML = '';
+}
+
+// --- Condominium ---
+function showAddCondoForm() {
+    showInlineForm(`
+        <div class="inline-form" id="condoForm">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="ciName" placeholder="Ej: Condominio Los Pinos">
+            </div>
+            <div class="form-group">
+                <label>Dirección</label>
+                <input id="ciAddress" placeholder="Dirección del condominio">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveCondo()"><i class="fas fa-check"></i> Guardar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('ciName').focus();
+}
+
+function showEditCondoForm(id, name) {
+    showInlineForm(`
+        <div class="inline-form" id="condoForm">
+            <input type="hidden" id="ciId" value="${id}">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="ciName" value="${name}">
+            </div>
+            <div class="form-group">
+                <label>Dirección</label>
+                <input id="ciAddress" placeholder="Dirección">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveCondo()"><i class="fas fa-check"></i> Actualizar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('ciName').focus();
+}
+
+async function saveCondo() {
+    const id = document.getElementById('ciId')?.value;
+    const name = document.getElementById('ciName').value.trim();
+    const address = document.getElementById('ciAddress')?.value?.trim() || '';
+    if (!name) { showToast('El nombre es obligatorio', 'warning'); return; }
+    try {
+        if (id) {
+            await fetch(`/api/condominiums/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            showToast('Condominio actualizado', 'success');
+        } else {
+            await fetch('/api/condominiums', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, address}) });
+            showToast('Condominio creado', 'success');
+        }
+        hideInlineForm();
+        await loadHierarchy();
+    } catch(e) { showToast('Error al guardar', 'warning'); }
+}
+
+async function confirmDeleteCondo(id) {
+    if (!confirm('¿Eliminar este condominio? Se eliminarán todos sus edificios, salas y activos.')) return;
+    await fetch(`/api/condominiums/${id}`, {method:'DELETE'});
+    showToast('Condominio eliminado', 'info');
+    await loadHierarchy();
+}
+
+// --- Building ---
+function showAddBuildingForm(condoId) {
+    showInlineForm(`
+        <div class="inline-form" id="buildingForm">
+            <input type="hidden" id="biCondoId" value="${condoId}">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="biName" placeholder="Ej: Torre A, Edificio Principal">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveBuilding()"><i class="fas fa-check"></i> Guardar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('biName').focus();
+}
+
+function showEditBuildingForm(id, name) {
+    showInlineForm(`
+        <div class="inline-form" id="buildingForm">
+            <input type="hidden" id="biId" value="${id}">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="biName" value="${name}">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveBuilding()"><i class="fas fa-check"></i> Actualizar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('biName').focus();
+}
+
+async function saveBuilding() {
+    const id = document.getElementById('biId')?.value;
+    const condoId = document.getElementById('biCondoId')?.value;
+    const name = document.getElementById('biName').value.trim();
+    if (!name) { showToast('El nombre es obligatorio', 'warning'); return; }
+    try {
+        if (id) {
+            await fetch(`/api/buildings/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            showToast('Edificio actualizado', 'success');
+        } else {
+            await fetch('/api/buildings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({condominium_id: parseInt(condoId), name}) });
+            showToast('Edificio creado', 'success');
+        }
+        hideInlineForm();
+        await loadHierarchy();
+    } catch(e) { showToast('Error al guardar', 'warning'); }
+}
+
+async function confirmDeleteBuilding(id) {
+    if (!confirm('¿Eliminar este edificio? Se eliminarán todas sus salas y activos.')) return;
+    await fetch(`/api/buildings/${id}`, {method:'DELETE'});
+    showToast('Edificio eliminado', 'info');
+    await loadHierarchy();
+}
+
+// --- Room ---
+function showAddRoomForm(bldId) {
+    showInlineForm(`
+        <div class="inline-form" id="roomForm">
+            <input type="hidden" id="riBuildingId" value="${bldId}">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="riName" placeholder="Ej: Cuarto de Bombas, Sótano, Planta Baja">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveRoom()"><i class="fas fa-check"></i> Guardar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('riName').focus();
+}
+
+function showEditRoomForm(id, name) {
+    showInlineForm(`
+        <div class="inline-form" id="roomForm">
+            <input type="hidden" id="riId" value="${id}">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input id="riName" value="${name}">
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="saveRoom()"><i class="fas fa-check"></i> Actualizar</button>
+            <button class="btn btn-sm" onclick="hideInlineForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    `);
+    document.getElementById('riName').focus();
+}
+
+async function saveRoom() {
+    const id = document.getElementById('riId')?.value;
+    const bldId = document.getElementById('riBuildingId')?.value;
+    const name = document.getElementById('riName').value.trim();
+    if (!name) { showToast('El nombre es obligatorio', 'warning'); return; }
+    try {
+        if (id) {
+            await fetch(`/api/rooms/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+            showToast('Sala actualizada', 'success');
+        } else {
+            await fetch('/api/rooms', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({building_id: parseInt(bldId), name}) });
+            showToast('Sala creada', 'success');
+        }
+        hideInlineForm();
+        await loadHierarchy();
+    } catch(e) { showToast('Error al guardar', 'warning'); }
+}
+
+async function confirmDeleteRoom(id) {
+    if (!confirm('¿Eliminar esta sala? Se eliminarán todos sus activos.')) return;
+    await fetch(`/api/rooms/${id}`, {method:'DELETE'});
+    showToast('Sala eliminada', 'info');
+    await loadHierarchy();
+}
+
+loadHierarchy();
+</script>
+{% endblock %}

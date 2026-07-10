@@ -1,29 +1,215 @@
 """Database seeding script for the Expert System.
 
 Creates the initial schema and populates it with hierarchical data:
-- 2 condominiums with buildings and machine rooms
-- 8 assets distributed across rooms
+- 8 condominiums with real addresses
+- Real equipment distribution: bombas (water), plantas (generator), ascensores (elevator)
 - Each with sensors, actuators, and fuzzy rules
-- 3 user accounts for role-based access
+- 17 user accounts (1 admin + 1 tech + 1 supervisor per condominium) for role-based access
 """
 
 import hashlib
-from storage.database import init_db, get_session
+import secrets
+from storage.database import get_session
 from models.models import Asset, SensorConfig, Actuator, Rule
 from models.models import Condominium, Building, MachineRoom, User
+from core.knowledge_base import auto_generate_mf
 
 
 def _hash(pw):
-    return hashlib.sha256(pw.encode()).hexdigest()
+    """Hash password with PBKDF2-SHA256 and a random 16-byte salt.
+    Returns salt$hash (both hex-encoded) for storage."""
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 100_000)
+    return f"{salt}${h.hex()}"
+
+
+# Equipment config per condominium: (base_type, name_suffix, quantity)
+CONDO_EQUIPMENT = [
+    ("Centro Residencial San Miguel", "Av. Alirio Ugarte Pelayo, frente a la sede PDVSA", 9.7997, -63.1627, "Edificio Principal",
+     [("water", 2), ("generator", 1), ("elevator", 1)]),
+    ("Condominio La Ceiba", "Vía Viboral, Urb. Lomas del Bosque", 9.797, -63.163, "Torre A",
+     [("water", 4)]),
+    ("Condominio Villas Merey", "Vía Viboral, al lado C.C. Sambilito", 9.798, -63.162, "Torre B",
+     [("water", 2), ("generator", 1)]),
+    ("Cond. Los Chaguaramos", "Vía La Toscana, Sector Tipuro, Urb. San Miguel", 9.796, -63.161, "Torre C",
+     [("water", 2)]),
+    ("Condominio Los Robles", "Vía La Toscana, Sector Tipuro, Urb. San Miguel", 9.797, -63.160, "Torre D",
+     [("water", 2)]),
+    ("Condominio Golf Plaza", "Vía La Toscana, Calle Guarapiche, Urb. San Miguel", 9.8001, -63.1614, "Torre E",
+     [("water", 8), ("generator", 1), ("elevator", 4)]),
+    ("Condominio Vista Golf", "Vía La Toscana, Calle Guarapiche, Urb. San Miguel", 9.8009, -63.1604, "Torre F",
+     [("water", 8), ("generator", 1), ("elevator", 4)]),
+    ("Condominio San Andrés", "Vía La Toscana, Calle Guarapiche, Urb. San Miguel", 9.7985, -63.1595, "Torre G",
+     [("water", 2), ("generator", 1), ("elevator", 2)]),
+    ("Centro Empresarial San Miguel", "Av. Alirio Ugarte Pelayo, frente PDVSA ESEM", 9.7845, -63.1535, "Oficinas",
+     [("generator", 1)]),
+]
+
+# Base types and their display properties
+ASSET_TYPE_SLUGS = {"water": "bomba", "generator": "planta", "elevator": "ascensor"}
+
+ASSET_TYPES = {
+    "water":     {"label": "Bomba", "icon": "droplets", "output_name": "urgency", "output_label": "Urgencia", "output_min": 0, "output_max": 100,
+                  "room": "Cuarto de Bombas"},
+    "generator": {"label": "Planta Eléctrica", "icon": "zap", "output_name": "maintenance", "output_label": "Prioridad de Mantenimiento",
+                  "output_min": 0, "output_max": 100, "room": "Planta Baja"},
+    "elevator":  {"label": "Ascensor", "icon": "arrow-up", "output_name": "maintenance", "output_label": "Prioridad de Mantenimiento",
+                  "output_min": 0, "output_max": 100, "room": "Sótano"},
+}
+
+# Sensor configs per base type: (name, label, unit, min, max, [term_names])
+SENSOR_DEFS = {
+    "water": [
+        ("vibration", "Vibración", "mm/s", 0, 20, ["bajo", "medio", "alto"]),
+        ("temperature", "Temperatura", "°C", 0, 100, [{"name": "normal", "peak": 25}, {"name": "caliente", "peak": 50}, {"name": "critico", "peak": 80}]),
+        ("pressure", "Presión", "bar", 0, 16, ["bajo", "normal", "alto"]),
+        ("flow", "Caudal", "L/min", 0, 100, ["bajo", "normal", "alto"]),
+        ("motor_current", "Corriente del Motor", "A", 0, 30, ["bajo", "normal", "alto"]),
+    ],
+    "generator": [
+        ("rpm", "RPM", "rpm", 0, 2000, [{"name": "bajo", "peak": 0}, {"name": "normal", "peak": 1700}, {"name": "alto", "peak": 1900}]),
+        ("temperature", "Temperatura", "°C", 0, 120, [{"name": "normal", "peak": 70}, {"name": "caliente", "peak": 90}, {"name": "critico", "peak": 110}]),
+        ("fuel_level", "Nivel Combustible", "%", 0, 100, ["critico", "bajo", "normal"]),
+        ("voltage", "Voltaje", "V", 0, 300, [{"name": "bajo", "peak": 140}, {"name": "normal", "peak": 220}, {"name": "alto", "peak": 260}]),
+        ("oil_pressure", "Presión del Aceite", "bar", 0, 8, [{"name": "bajo", "peak": 0.5}, {"name": "normal", "peak": 5}, {"name": "alto", "peak": 7}]),
+    ],
+    "elevator": [
+        ("vibration", "Vibración", "mm/s", 0, 15, ["bajo", "medio", "alto"]),
+        ("temperature", "Temperatura", "°C", 0, 80, [{"name": "normal", "peak": 30}, {"name": "caliente", "peak": 50}, {"name": "critico", "peak": 70}]),
+        ("speed_var", "Var. Velocidad", "%", 0, 20, ["estable", "moderado", "erratico"]),
+        ("motor_current", "Corriente del Motor", "A", 0, 40, [{"name": "bajo", "peak": 0}, {"name": "normal", "peak": 8}, {"name": "alto", "peak": 25}]),
+    ],
+}
+
+# Actuator defs per base type: (name, label, unit, min, max, auto)
+ACTUATOR_DEFS = {
+    "water": [
+        ("inlet_valve", "Válvula de entrada", "%", 0, 100, True),
+        ("bypass_valve", "Válvula de by-pass", "%", 0, 100, True),
+        ("alarm", "Alarma", None, 0, 1, False),
+    ],
+    "generator": [
+        ("speed_control", "Control de velocidad", "%", 0, 100, True),
+        ("choke", "Estrangulador", "%", 0, 100, True),
+        ("alarm", "Alarma", None, 0, 1, False),
+    ],
+    "elevator": [
+        ("speed_regulator", "Regulador velocidad", "%", 0, 100, True),
+        ("brake", "Freno", None, 0, 1, True),
+        ("alarm", "Alarma", None, 0, 1, False),
+    ],
+}
+
+# Rule defs per base type: list of (name, description, operator, antecedents, consequent, action, weight)
+RULE_DEFS = {
+    "water": [
+        ("R1", "SI vibración ALTA Y temperatura CRÍTICO ENTONCES alta urgencia", "and",
+         [{"sensor": "vibration", "term": "alto"}, {"sensor": "temperature", "term": "critico"}],
+         {"sensor": "urgency", "term": "high"},
+         {"actuator": "alarm", "value": 1}, 1.0),
+        ("R2", "SI caudal BAJO Y presión ALTA ENTONCES alta urgencia", "and",
+         [{"sensor": "flow", "term": "bajo"}, {"sensor": "pressure", "term": "alto"}],
+         {"sensor": "urgency", "term": "high"},
+         {"actuator": "bypass_valve", "value": 100}, 1.0),
+        ("R3", "SI corriente ALTA ENTONCES alta urgencia", "and",
+         [{"sensor": "motor_current", "term": "alto"}],
+         {"sensor": "urgency", "term": "high"},
+         {"actuator": "inlet_valve", "value": 100}, 1.0),
+        ("R4", "SI vibración BAJA Y caudal NORMAL Y presión NORMAL ENTONCES baja urgencia", "and",
+         [{"sensor": "vibration", "term": "bajo"}, {"sensor": "flow", "term": "normal"}, {"sensor": "pressure", "term": "normal"}],
+         {"sensor": "urgency", "term": "low"},
+         {"actuator": "inlet_valve", "value": 50}, 1.0),
+    ],
+    "generator": [
+        ("R1", "SI temperatura CRÍTICO Y RPM ALTA ENTONCES alto mantenimiento", "and",
+         [{"sensor": "temperature", "term": "critico"}, {"sensor": "rpm", "term": "alto"}],
+         {"sensor": "maintenance", "term": "high"},
+         {"actuator": "speed_control", "value": 60}, 1.0),
+        ("R2", "SI combustible CRÍTICO ENTONCES alto mantenimiento", "and",
+         [{"sensor": "fuel_level", "term": "critico"}],
+         {"sensor": "maintenance", "term": "high"},
+         {"actuator": "alarm", "value": 1}, 1.0),
+        ("R3", "SI presión aceite BAJA Y temperatura CALIENTE ENTONCES alto mantenimiento", "and",
+         [{"sensor": "oil_pressure", "term": "bajo"}, {"sensor": "temperature", "term": "caliente"}],
+         {"sensor": "maintenance", "term": "high"},
+         {"actuator": "choke", "value": 80}, 1.0),
+        ("R4", "SI voltaje NORMAL Y temperatura NORMAL Y combustible NORMAL ENTONCES bajo mantenimiento", "and",
+         [{"sensor": "voltage", "term": "normal"}, {"sensor": "temperature", "term": "normal"}, {"sensor": "fuel_level", "term": "normal"}],
+         {"sensor": "maintenance", "term": "low"},
+         {"actuator": "speed_control", "value": 50}, 1.0),
+    ],
+    "elevator": [
+        ("R1", "SI vibración ALTA Y temperatura CRÍTICO ENTONCES alto mantenimiento", "and",
+         [{"sensor": "vibration", "term": "alto"}, {"sensor": "temperature", "term": "critico"}],
+         {"sensor": "maintenance", "term": "high"},
+         {"actuator": "brake", "value": 1}, 1.0),
+        ("R2", "SI velocidad ERRÁTICA Y corriente ALTA ENTONCES alto mantenimiento", "and",
+         [{"sensor": "speed_var", "term": "erratico"}, {"sensor": "motor_current", "term": "alto"}],
+         {"sensor": "maintenance", "term": "high"},
+         {"actuator": "speed_regulator", "value": 70}, 1.0),
+        ("R3", "SI vibración BAJA Y velocidad ESTABLE Y corriente NORMAL ENTONCES bajo mantenimiento", "and",
+         [{"sensor": "vibration", "term": "bajo"}, {"sensor": "speed_var", "term": "estable"}, {"sensor": "motor_current", "term": "normal"}],
+         {"sensor": "maintenance", "term": "low"},
+         {"actuator": "speed_regulator", "value": 50}, 1.0),
+    ],
+}
+
+
+_asset_counter = 0
+
+def _create_asset(session, base_type, instance_num, location_id, condo_slug, condo_short):
+    """Create an asset instance with its sensors, actuators, and rules."""
+    global _asset_counter
+    _asset_counter += 1
+    t = ASSET_TYPES[base_type]
+    type_slug = ASSET_TYPE_SLUGS[base_type]
+    asset_name = f"{type_slug}_{condo_slug}_{instance_num}"
+    asset_label = f"{t['label']} {condo_short} #{instance_num}"
+
+    asset = Asset(
+        name=asset_name, label=asset_label,
+        description=f"{t['label']} de {condo_short}",
+        icon=t["icon"], output_name=t["output_name"],
+        output_label=t["output_label"],
+        output_min=t["output_min"], output_max=t["output_max"],
+        location_id=location_id,
+    )
+    session.add(asset)
+    session.flush()
+
+    # Sensors
+    for s_name, s_label, s_unit, s_min, s_max, terms in SENSOR_DEFS[base_type]:
+        mf = auto_generate_mf(terms, s_min, s_max)
+        session.add(SensorConfig(
+            asset_id=asset.id, name=s_name, label=s_label, unit=s_unit,
+            min_val=s_min, max_val=s_max, mf_config=mf,
+        ))
+
+    # Actuators
+    for a_name, a_label, a_unit, a_min, a_max, a_auto in ACTUATOR_DEFS[base_type]:
+        session.add(Actuator(
+            asset_id=asset.id, name=a_name, label=a_label,
+            unit=a_unit, min_val=a_min, max_val=a_max, auto=a_auto,
+        ))
+
+    # Rules
+    for r_name, r_desc, r_op, r_ant, r_con, r_act, r_w in RULE_DEFS[base_type]:
+        session.add(Rule(
+            asset_id=asset.id, name=r_name, description=r_desc,
+            operator=r_op, antecedents=r_ant, consequent=r_con,
+            action=r_act, weight=r_w,
+        ))
+
+    return asset_name
 
 
 def seed():
-    """Drop and recreate all tables, then seed with initial data.
+    """Seed the database with initial data if it's empty.
 
     Creates the full hierarchy: Condominium -> Building -> MachineRoom -> Asset.
-    Also creates 3 users with role-based access.
+    Creates equipment per condo: bombas, plantas, ascensores.
+    Also creates 17 users with role-based access (1 admin + 8 sup + 8 tec).
     """
-    init_db()
     session = get_session()
 
     if session.query(Asset).count() > 0:
@@ -31,670 +217,96 @@ def seed():
         session.close()
         return
 
-    # ---- Hierarchy: 2 condominiums, 3 buildings, 4 machine rooms ----
-    c1 = Condominium(name="Los Olivos", address="Av. Principal 123",
-                     lat=-12.046, lng=-77.043)
-    c2 = Condominium(name="Vista Alegre", address="Jr. Las Flores 456",
-                     lat=-12.120, lng=-77.030)
-    session.add_all([c1, c2])
-    session.flush()
+    asset_instance_map = {}  # asset_name -> base_type for simulator registration
 
-    b1 = Building(name="Edificio Principal", condominium_id=c1.id)
-    b2 = Building(name="Edificio Secundario", condominium_id=c1.id)
-    b3 = Building(name="Torre A", condominium_id=c2.id)
-    session.add_all([b1, b2, b3])
-    session.flush()
+    # ---- Create condos with their equipment ----
+    CONDO_SLUGS = {
+        "Centro Residencial San Miguel": ("san_miguel", "San Miguel"),
+        "Condominio La Ceiba": ("ceiba", "Ceiba"),
+        "Condominio Villas Merey": ("merey", "Merey"),
+        "Cond. Los Chaguaramos": ("chaguaramos", "Chaguaramos"),
+        "Condominio Los Robles": ("robles", "Robles"),
+        "Condominio Golf Plaza": ("golf_plaza", "Golf Plaza"),
+        "Condominio Vista Golf": ("vista_golf", "Vista Golf"),
+        "Condominio San Andrés": ("san_andres", "San Andrés"),
+        "Centro Empresarial San Miguel": ("empresarial_sm", "Empresarial SM"),
+    }
 
-    rm_sotano = MachineRoom(name="Sótano", building_id=b1.id)
-    rm_electrico = MachineRoom(name="Cuarto Eléctrico", building_id=b1.id)
-    rm_azotea = MachineRoom(name="Azotea", building_id=b2.id)
-    rm_pbaja = MachineRoom(name="Planta Baja", building_id=b3.id)
-    session.add_all([rm_sotano, rm_electrico, rm_azotea, rm_pbaja])
-    session.flush()
+    for condo_data in CONDO_EQUIPMENT:
+        name, address, lat, lng, building_name, equipment = condo_data
+        slug, short = CONDO_SLUGS.get(name, (name.lower().replace(" ", "_"), name))
+
+        condo = Condominium(name=name, address=address, lat=lat, lng=lng, slug=slug)
+        session.add(condo)
+        session.flush()
+
+        building = Building(name=building_name, condominium_id=condo.id)
+        session.add(building)
+        session.flush()
+
+        # Group equipment by room type
+        room_map = {}  # room_name -> list of (base_type, count)
+        for base_type, count in equipment:
+            room_name = ASSET_TYPES[base_type]["room"]
+            if room_name not in room_map:
+                room_map[room_name] = []
+            room_map[room_name].append((base_type, count))
+
+        for room_name, items in room_map.items():
+            room = MachineRoom(name=room_name, building_id=building.id)
+            session.add(room)
+            session.flush()
+
+            for base_type, count in items:
+                for i in range(1, count + 1):
+                    asset_name = _create_asset(session, base_type, i, room.id, slug, short)
+                    asset_instance_map[asset_name] = base_type
 
     # ---- Users ----
     admin = User(username="admin", password_hash=_hash("admin123"),
-                 role="admin", condominium_id=None)
-    supervisor = User(username="supervisor", password_hash=_hash("super123"),
-                      role="supervisor", condominium_id=None)
-    tecnico = User(username="tecnico", password_hash=_hash("tec123"),
-                   role="technician", condominium_id=c1.id)
-    session.add_all([admin, supervisor, tecnico])
-    session.flush()
+                 role="admin", condominiums=[])
+    users = [admin]
 
-    # ---- ELEVATOR (Sótano) ----
-    ascensor = Asset(name="elevator", label="Ascensor",
-                     description="Sistema de ascensor del condominio",
-                     icon="arrow-up", output_name="maintenance", output_label="Prioridad de Mantenimiento",
-                     output_min=0, output_max=100, location_id=rm_sotano.id)
-    session.add(ascensor)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=ascensor.id, name="vibration", label="Vibración", unit="mm/s",
-                     min_val=0, max_val=10,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 0, 4]},
-                         {"term": "medium", "type": "trimf", "params": [2, 5, 8]},
-                         {"term": "high", "type": "trimf", "params": [6, 10, 10]},
-                     ]),
-        SensorConfig(asset_id=ascensor.id, name="temperature", label="Temperatura", unit="°C",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "normal", "type": "trimf", "params": [0, 30, 60]},
-                         {"term": "warm", "type": "trimf", "params": [40, 60, 80]},
-                         {"term": "hot", "type": "trimf", "params": [65, 100, 100]},
-                     ]),
-        SensorConfig(asset_id=ascensor.id, name="speed_var", label="Var. Velocidad", unit="%",
-                     min_val=0, max_val=10,
-                     mf_config=[
-                         {"term": "stable", "type": "trimf", "params": [0, 0, 4]},
-                         {"term": "moderate", "type": "trimf", "params": [2, 5, 8]},
-                         {"term": "erratic", "type": "trimf", "params": [6, 10, 10]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=ascensor.id, name="speed_controller", label="Control Velocidad", unit="%", min_val=0, max_val=100, command=100, state=True),
-        Actuator(asset_id=ascensor.id, name="emergency_brake", label="Freno Emergencia", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=ascensor.id, name="door_lock", label="Bloqueo Puertas", unit="", min_val=0, max_val=1, command=0, state=False),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=ascensor.id, name="R1",
-             description="SI vibración ALTA Y temperatura CALIENTE ENTONCES critical",
-             operator="and",
-             antecedents=[{"sensor": "vibration", "term": "high"}, {"sensor": "temperature", "term": "hot"}],
-             consequent={"sensor": "maintenance", "term": "critical"},
-             action={"actuator": "speed_controller", "value": 10}, weight=1.0),
-        Rule(asset_id=ascensor.id, name="R2",
-             description="SI vibración ALTA O velocidad ERRÁTICA ENTONCES high → reducir velocidad",
-             operator="or",
-             antecedents=[{"sensor": "vibration", "term": "high"}, {"sensor": "speed_var", "term": "erratic"}],
-             consequent={"sensor": "maintenance", "term": "high"},
-             action={"actuator": "speed_controller", "value": 40}, weight=1.0),
-        Rule(asset_id=ascensor.id, name="R3",
-             description="SI vibración MEDIA Y temperatura CÁLIDA ENTONCES medium → reducir velocidad",
-             operator="and",
-             antecedents=[{"sensor": "vibration", "term": "medium"}, {"sensor": "temperature", "term": "warm"}],
-             consequent={"sensor": "maintenance", "term": "medium"},
-             action={"actuator": "speed_controller", "value": 70}, weight=1.0),
-        Rule(asset_id=ascensor.id, name="R4",
-             description="SI vibración BAJA Y temperatura NORMAL Y velocidad ESTABLE ENTONCES low → velocidad normal",
-             operator="and",
-             antecedents=[{"sensor": "vibration", "term": "low"}, {"sensor": "temperature", "term": "normal"}, {"sensor": "speed_var", "term": "stable"}],
-             consequent={"sensor": "maintenance", "term": "low"},
-             action={"actuator": "speed_controller", "value": 100}, weight=1.0),
-        Rule(asset_id=ascensor.id, name="R5",
-             description="SI velocidad MODERADA ENTONCES medium → ajustar velocidad",
-             operator="and",
-             antecedents=[{"sensor": "speed_var", "term": "moderate"}],
-             consequent={"sensor": "maintenance", "term": "medium"},
-             action={"actuator": "speed_controller", "value": 60}, weight=1.0),
-    ])
-
-    # ---- ELECTRICAL ----
-    electrico = Asset(name="electrical", label="Sistema Eléctrico",
-                      description="Sistema eléctrico del condominio (transformador, tableros)",
-                      icon="zap", output_name="risk", output_label="Nivel de Riesgo",
-                      output_min=0, output_max=100, location_id=rm_electrico.id)
-    session.add(electrico)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=electrico.id, name="voltage", label="Voltaje", unit="V",
-                     min_val=100, max_val=260,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [100, 100, 180]},
-                         {"term": "normal", "type": "trimf", "params": [170, 220, 240]},
-                         {"term": "high", "type": "trimf", "params": [230, 260, 260]},
-                     ]),
-        SensorConfig(asset_id=electrico.id, name="current", label="Corriente", unit="A",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 0, 40]},
-                         {"term": "medium", "type": "trimf", "params": [20, 50, 80]},
-                         {"term": "high", "type": "trimf", "params": [60, 100, 100]},
-                     ]),
-        SensorConfig(asset_id=electrico.id, name="temp_rise", label="Temp. Rise", unit="°C",
-                     min_val=0, max_val=80,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 0, 25]},
-                         {"term": "medium", "type": "trimf", "params": [15, 40, 60]},
-                         {"term": "high", "type": "trimf", "params": [50, 80, 80]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=electrico.id, name="load_shedder", label="Desconexión Cargas", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=electrico.id, name="capacitor_bank", label="Banco Capacitores", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=electrico.id, name="main_breaker", label="Breaker Principal", unit="", min_val=0, max_val=1, command=1, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=electrico.id, name="R1",
-             description="SI voltaje ALTO Y corriente ALTA Y temperatura ALTA ENTONCES critical → cortar breaker",
-             operator="and",
-             antecedents=[{"sensor": "voltage", "term": "high"}, {"sensor": "current", "term": "high"}, {"sensor": "temp_rise", "term": "high"}],
-             consequent={"sensor": "risk", "term": "critical"},
-             action={"actuator": "main_breaker", "value": 0}, weight=1.0),
-        Rule(asset_id=electrico.id, name="R2",
-             description="SI voltaje ALTO O corriente ALTA ENTONCES high → desconectar cargas",
-             operator="or",
-             antecedents=[{"sensor": "voltage", "term": "high"}, {"sensor": "current", "term": "high"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "load_shedder", "value": 1}, weight=1.0),
-        Rule(asset_id=electrico.id, name="R3",
-             description="SI corriente MEDIA Y temperatura MEDIA ENTONCES medium → activar banco capacitores",
-             operator="and",
-             antecedents=[{"sensor": "current", "term": "medium"}, {"sensor": "temp_rise", "term": "medium"}],
-             consequent={"sensor": "risk", "term": "medium"},
-             action={"actuator": "capacitor_bank", "value": 1}, weight=1.0),
-        Rule(asset_id=electrico.id, name="R4",
-             description="SI voltaje NORMAL Y corriente BAJA Y temperatura BAJA ENTONCES low → normalizar",
-             operator="and",
-             antecedents=[{"sensor": "voltage", "term": "normal"}, {"sensor": "current", "term": "low"}, {"sensor": "temp_rise", "term": "low"}],
-             consequent={"sensor": "risk", "term": "low"},
-             action={"actuator": "load_shedder", "value": 0}, weight=1.0),
-        Rule(asset_id=electrico.id, name="R5",
-             description="SI voltaje BAJO Y corriente ALTA ENTONCES high → activar banco capacitores",
-             operator="and",
-             antecedents=[{"sensor": "voltage", "term": "low"}, {"sensor": "current", "term": "high"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "capacitor_bank", "value": 1}, weight=1.0),
-        Rule(asset_id=electrico.id, name="R6",
-             description="SI temperatura ALTA ENTONCES high → desconectar cargas",
-             operator="and",
-             antecedents=[{"sensor": "temp_rise", "term": "high"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "load_shedder", "value": 1}, weight=1.0),
-    ])
-
-    # ---- WATER ----
-    agua = Asset(name="water", label="Sistema de Agua",
-                  description="Sistema de bombeo y tanques de agua del condominio",
-                  icon="droplets", output_name="urgency", output_label="Urgencia",
-                  output_min=0, output_max=100, location_id=rm_sotano.id)
-    session.add(agua)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=agua.id, name="flow", label="Caudal", unit="L/min",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "very_low", "type": "trimf", "params": [0, 0, 20]},
-                         {"term": "low", "type": "trimf", "params": [10, 30, 50]},
-                         {"term": "normal", "type": "trimf", "params": [40, 60, 80]},
-                         {"term": "high", "type": "trimf", "params": [70, 100, 100]},
-                     ]),
-        SensorConfig(asset_id=agua.id, name="pressure", label="Presión", unit="PSI",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "very_low", "type": "trimf", "params": [0, 0, 20]},
-                         {"term": "low", "type": "trimf", "params": [10, 30, 50]},
-                         {"term": "normal", "type": "trimf", "params": [40, 65, 85]},
-                         {"term": "high", "type": "trimf", "params": [75, 100, 100]},
-                     ]),
-        SensorConfig(asset_id=agua.id, name="tank_level", label="Nivel Tanque", unit="%",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "empty", "type": "trimf", "params": [0, 0, 25]},
-                         {"term": "low", "type": "trimf", "params": [15, 35, 55]},
-                         {"term": "medium", "type": "trimf", "params": [40, 60, 80]},
-                         {"term": "full", "type": "trimf", "params": [70, 100, 100]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=agua.id, name="relief_valve", label="Válvula Alivio", unit="%", min_val=0, max_val=100, command=0, state=False),
-        Actuator(asset_id=agua.id, name="booster_pump", label="Bomba Presurizadora", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=agua.id, name="inlet_valve", label="Válvula Entrada", unit="", min_val=0, max_val=1, command=1, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=agua.id, name="R1",
-             description="SI tanque VACÍO Y caudal MUY BAJO ENTONCES critical → abrir válvula entrada",
-             operator="and",
-             antecedents=[{"sensor": "tank_level", "term": "empty"}, {"sensor": "flow", "term": "very_low"}],
-             consequent={"sensor": "urgency", "term": "critical"},
-             action={"actuator": "inlet_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=agua.id, name="R2",
-             description="SI presión MUY BAJA Y caudal MUY BAJO ENTONCES high → activar bomba",
-             operator="and",
-             antecedents=[{"sensor": "pressure", "term": "very_low"}, {"sensor": "flow", "term": "very_low"}],
-             consequent={"sensor": "urgency", "term": "high"},
-             action={"actuator": "booster_pump", "value": 1}, weight=1.0),
-        Rule(asset_id=agua.id, name="R3",
-             description="SI tanque BAJO Y presión BAJA ENTONCES medium → abrir válvula entrada",
-             operator="and",
-             antecedents=[{"sensor": "tank_level", "term": "low"}, {"sensor": "pressure", "term": "low"}],
-             consequent={"sensor": "urgency", "term": "medium"},
-             action={"actuator": "inlet_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=agua.id, name="R4",
-             description="SI tanque LLENO Y presión NORMAL Y caudal NORMAL ENTONCES none → normalizar",
-             operator="and",
-             antecedents=[{"sensor": "tank_level", "term": "full"}, {"sensor": "pressure", "term": "normal"}, {"sensor": "flow", "term": "normal"}],
-             consequent={"sensor": "urgency", "term": "none"},
-             action={"actuator": "booster_pump", "value": 0}, weight=1.0),
-        Rule(asset_id=agua.id, name="R5",
-             description="SI tanque VACÍO ENTONCES high → abrir válvula entrada",
-             operator="and",
-             antecedents=[{"sensor": "tank_level", "term": "empty"}],
-             consequent={"sensor": "urgency", "term": "high"},
-             action={"actuator": "inlet_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=agua.id, name="R6",
-             description="SI tanque MEDIO Y presión NORMAL ENTONCES low → cerrar válvula si estaba abierta",
-             operator="and",
-             antecedents=[{"sensor": "tank_level", "term": "medium"}, {"sensor": "pressure", "term": "normal"}],
-             consequent={"sensor": "urgency", "term": "low"},
-             action={"actuator": "inlet_valve", "value": 0}, weight=1.0),
-    ])
-
-    _seed_hvac(session, rm_azotea.id)
-    _seed_fire(session, rm_azotea.id)
-    _seed_generator(session, rm_pbaja.id)
-    _seed_lighting(session, rm_electrico.id)
-    _seed_access(session, rm_pbaja.id)
+    all_condos = session.query(Condominium).all()
+    for c in all_condos:
+        slug, _ = CONDO_SLUGS.get(c.name, (c.name.lower().replace(" ", "_"), c.name))
+        tec = User(username=f"tec_{slug}", password_hash=_hash("tec123"),
+                   role="technician", condominiums=[c])
+        sup = User(username=f"sup_{slug}", password_hash=_hash("sup123"),
+                   role="supervisor", condominiums=[c])
+        users.extend([tec, sup])
+    session.add_all(users)
 
     session.commit()
+
+    # Print summary
+    condo_count = session.query(Condominium).count()
+    building_count = session.query(Building).count()
+    room_count = session.query(MachineRoom).count()
+    asset_count = session.query(Asset).count()
+    sensor_count = session.query(SensorConfig).count()
+    actuator_count = session.query(Actuator).count()
+    rule_count = session.query(Rule).count()
+
     print("Database seeded successfully!")
-    print(f"  - {session.query(Condominium).count()} condominiums")
-    print(f"  - {session.query(Building).count()} buildings")
-    print(f"  - {session.query(MachineRoom).count()} machine rooms")
-    print(f"  - {session.query(Asset).count()} assets")
-    print(f"  - {session.query(SensorConfig).count()} sensors")
-    print(f"  - {session.query(Actuator).count()} actuators")
-    print(f"  - {session.query(Rule).count()} rules")
-    print(f"  - {session.query(User).count()} users")
+    print(f"  - {condo_count} condominiums")
+    print(f"  - {building_count} buildings")
+    print(f"  - {room_count} machine rooms")
+    print(f"  - {asset_count} assets")
+    print(f"  - {sensor_count} sensors")
+    print(f"  - {actuator_count} actuators")
+    print(f"  - {rule_count} rules")
+    user_count = session.query(User).count()
+    print(f"  - {user_count} users")
+
+    # Export instance mapping for use by api.py
+    import json, os
+    mapping_path = os.path.join(os.path.dirname(__file__), "..", "data", "asset_instances.json")
+    os.makedirs(os.path.dirname(mapping_path), exist_ok=True)
+    with open(mapping_path, "w") as f:
+        json.dump(asset_instance_map, f)
+
     session.close()
-
-
-def _seed_hvac(session, location_id):
-    """HVAC system with temp, pressure, rpm sensors and 3 actuators."""
-    hvac = Asset(name="hvac", label="HVAC",
-                 description="Sistema de climatización y ventilación",
-                 icon="thermometer", output_name="priority", output_label="Prioridad HVAC",
-                 output_min=0, output_max=100, location_id=location_id)
-    session.add(hvac)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=hvac.id, name="temp_in", label="Temp. Interior", unit="°C",
-                     min_val=10, max_val=40,
-                     mf_config=[
-                         {"term": "cool", "type": "trimf", "params": [10, 18, 24]},
-                         {"term": "normal", "type": "trimf", "params": [20, 25, 30]},
-                         {"term": "hot", "type": "trimf", "params": [28, 35, 40]},
-                     ]),
-        SensorConfig(asset_id=hvac.id, name="temp_out", label="Temp. Salida", unit="°C",
-                     min_val=5, max_val=35,
-                     mf_config=[
-                         {"term": "cold", "type": "trimf", "params": [5, 10, 16]},
-                         {"term": "normal", "type": "trimf", "params": [12, 18, 24]},
-                         {"term": "warm", "type": "trimf", "params": [20, 28, 35]},
-                     ]),
-        SensorConfig(asset_id=hvac.id, name="pressure", label="Presión", unit="PSI",
-                     min_val=0, max_val=250,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 50, 100]},
-                         {"term": "normal", "type": "trimf", "params": [80, 130, 170]},
-                         {"term": "high", "type": "trimf", "params": [150, 200, 250]},
-                     ]),
-        SensorConfig(asset_id=hvac.id, name="rpm", label="RPM Ventilador", unit="RPM",
-                     min_val=0, max_val=3000,
-                     mf_config=[
-                         {"term": "slow", "type": "trimf", "params": [0, 500, 1200]},
-                         {"term": "normal", "type": "trimf", "params": [1000, 1800, 2400]},
-                         {"term": "fast", "type": "trimf", "params": [2000, 2600, 3000]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=hvac.id, name="compressor", label="Compresor", unit="", min_val=0, max_val=1, command=1, state=True),
-        Actuator(asset_id=hvac.id, name="fan_speed", label="Velocidad Ventilador", unit="%", min_val=0, max_val=100, command=100, state=True),
-        Actuator(asset_id=hvac.id, name="damper", label="Compuerta Aire", unit="%", min_val=0, max_val=100, command=100, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=hvac.id, name="R1",
-             description="SI temp_salida CALIENTE Y presión ALTA ENTONCES critical → apagar compresor",
-             operator="and",
-             antecedents=[{"sensor": "temp_out", "term": "warm"}, {"sensor": "pressure", "term": "high"}],
-             consequent={"sensor": "priority", "term": "critical"},
-             action={"actuator": "compressor", "value": 0}, weight=1.0),
-        Rule(asset_id=hvac.id, name="R2",
-             description="SI temp_interior CALIENTE O rpm LENTA ENTONCES high → ventilador máximo",
-             operator="or",
-             antecedents=[{"sensor": "temp_in", "term": "hot"}, {"sensor": "rpm", "term": "slow"}],
-             consequent={"sensor": "priority", "term": "high"},
-             action={"actuator": "fan_speed", "value": 100}, weight=1.0),
-        Rule(asset_id=hvac.id, name="R3",
-             description="SI presión BAJA ENTONCES high → cerrar compuerta",
-             operator="and",
-             antecedents=[{"sensor": "pressure", "term": "low"}],
-             consequent={"sensor": "priority", "term": "high"},
-             action={"actuator": "damper", "value": 50}, weight=1.0),
-        Rule(asset_id=hvac.id, name="R4",
-             description="SI temp_interior NORMAL Y presión NORMAL ENTONCES low → velocidad normal",
-             operator="and",
-             antecedents=[{"sensor": "temp_in", "term": "normal"}, {"sensor": "pressure", "term": "normal"}],
-             consequent={"sensor": "priority", "term": "low"},
-             action={"actuator": "fan_speed", "value": 70}, weight=1.0),
-        Rule(asset_id=hvac.id, name="R5",
-             description="SI temp_salida FRÍA Y rpm NORMAL ENTONCES none",
-             operator="and",
-             antecedents=[{"sensor": "temp_out", "term": "cold"}, {"sensor": "rpm", "term": "normal"}],
-             consequent={"sensor": "priority", "term": "none"},
-             action={"actuator": "compressor", "value": 1}, weight=1.0),
-    ])
-
-
-def _seed_fire(session, location_id):
-    """Fire suppression system with smoke, temp, pressure sensors."""
-    fire = Asset(name="fire", label="Sistema Contra Incendios",
-                  description="Sistema de detección y extinción de incendios",
-                  icon="flame", output_name="risk", output_label="Riesgo Incendio",
-                  output_min=0, output_max=100, location_id=location_id)
-    session.add(fire)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=fire.id, name="smoke_level", label="Nivel Humo", unit="%",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "clear", "type": "trimf", "params": [0, 0, 20]},
-                         {"term": "detected", "type": "trimf", "params": [15, 40, 65]},
-                         {"term": "heavy", "type": "trimf", "params": [55, 80, 100]},
-                     ]),
-        SensorConfig(asset_id=fire.id, name="temp_rise", label="Temp. Ambiente", unit="°C",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "normal", "type": "trimf", "params": [0, 25, 40]},
-                         {"term": "elevated", "type": "trimf", "params": [30, 50, 70]},
-                         {"term": "critical", "type": "trimf", "params": [60, 85, 100]},
-                     ]),
-        SensorConfig(asset_id=fire.id, name="water_pressure", label="Presión Agua", unit="PSI",
-                     min_val=0, max_val=200,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 0, 60]},
-                         {"term": "normal", "type": "trimf", "params": [50, 90, 130]},
-                         {"term": "high", "type": "trimf", "params": [110, 160, 200]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=fire.id, name="sprinkler_valve", label="Válvula Rociadores", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=fire.id, name="alarm", label="Alarma Incendio", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=fire.id, name="fire_pump", label="Bomba Incendio", unit="", min_val=0, max_val=1, command=0, state=False),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=fire.id, name="R1",
-             description="SI humo ALTO Y temp CRÍTICA ENTONCES critical → activar rociadores y alarma",
-             operator="and",
-             antecedents=[{"sensor": "smoke_level", "term": "heavy"}, {"sensor": "temp_rise", "term": "critical"}],
-             consequent={"sensor": "risk", "term": "critical"},
-             action={"actuator": "sprinkler_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=fire.id, name="R2",
-             description="SI humo DETECTADO ENTONCES high → activar alarma",
-             operator="and",
-             antecedents=[{"sensor": "smoke_level", "term": "detected"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "alarm", "value": 1}, weight=1.0),
-        Rule(asset_id=fire.id, name="R3",
-             description="SI temp ELEVADA Y presión BAJA ENTONCES high → activar bomba",
-             operator="and",
-             antecedents=[{"sensor": "temp_rise", "term": "elevated"}, {"sensor": "water_pressure", "term": "low"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "fire_pump", "value": 1}, weight=1.0),
-        Rule(asset_id=fire.id, name="R4",
-             description="SI humo DETECTADO Y temp ELEVADA ENTONCES critical → rociadores + alarma + bomba",
-             operator="and",
-             antecedents=[{"sensor": "smoke_level", "term": "detected"}, {"sensor": "temp_rise", "term": "elevated"}],
-             consequent={"sensor": "risk", "term": "critical"},
-             action={"actuator": "sprinkler_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=fire.id, name="R5",
-             description="SI ambiente NORMAL Y humo NORMAL ENTONCES low → resetear todo",
-             operator="and",
-             antecedents=[{"sensor": "temp_rise", "term": "normal"}, {"sensor": "smoke_level", "term": "clear"}],
-             consequent={"sensor": "risk", "term": "low"},
-             action={"actuator": "alarm", "value": 0}, weight=1.0),
-    ])
-
-
-def _seed_generator(session, location_id):
-    """Backup generator with fuel, rpm, temp, voltage sensors."""
-    gen = Asset(name="generator", label="Generador Eléctrico",
-                 description="Generador de emergencia del condominio",
-                 icon="activity", output_name="urgency", output_label="Urgencia Generador",
-                 output_min=0, output_max=100, location_id=location_id)
-    session.add(gen)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=gen.id, name="fuel_level", label="Nivel Combustible", unit="%",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "empty", "type": "trimf", "params": [0, 0, 20]},
-                         {"term": "low", "type": "trimf", "params": [10, 30, 50]},
-                         {"term": "normal", "type": "trimf", "params": [40, 70, 100]},
-                     ]),
-        SensorConfig(asset_id=gen.id, name="rpm", label="RPM Motor", unit="RPM",
-                     min_val=0, max_val=3000,
-                     mf_config=[
-                         {"term": "stopped", "type": "trimf", "params": [0, 0, 200]},
-                         {"term": "low", "type": "trimf", "params": [100, 800, 1500]},
-                         {"term": "normal", "type": "trimf", "params": [1400, 1800, 2200]},
-                         {"term": "over", "type": "trimf", "params": [2000, 2600, 3000]},
-                     ]),
-        SensorConfig(asset_id=gen.id, name="coolant_temp", label="Temp. Refrigerante", unit="°C",
-                     min_val=0, max_val=120,
-                     mf_config=[
-                         {"term": "cold", "type": "trimf", "params": [0, 0, 40]},
-                         {"term": "normal", "type": "trimf", "params": [40, 80, 95]},
-                         {"term": "hot", "type": "trimf", "params": [85, 105, 120]},
-                     ]),
-        SensorConfig(asset_id=gen.id, name="voltage_out", label="Voltaje Salida", unit="V",
-                     min_val=0, max_val=260,
-                     mf_config=[
-                         {"term": "none", "type": "trimf", "params": [0, 0, 50]},
-                         {"term": "low", "type": "trimf", "params": [50, 150, 200]},
-                         {"term": "normal", "type": "trimf", "params": [200, 220, 240]},
-                         {"term": "high", "type": "trimf", "params": [230, 250, 260]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=gen.id, name="fuel_valve", label="Válvula Combustible", unit="", min_val=0, max_val=1, command=1, state=True),
-        Actuator(asset_id=gen.id, name="starter", label="Motor Arranque", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=gen.id, name="load_transfer", label="Transferencia Carga", unit="", min_val=0, max_val=1, command=1, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=gen.id, name="R1",
-             description="SI combustible VACÍO Y rpm DETENIDA ENTONCES critical → cerrar válvula",
-             operator="and",
-             antecedents=[{"sensor": "fuel_level", "term": "empty"}, {"sensor": "rpm", "term": "stopped"}],
-             consequent={"sensor": "urgency", "term": "critical"},
-             action={"actuator": "fuel_valve", "value": 0}, weight=1.0),
-        Rule(asset_id=gen.id, name="R2",
-             description="SI refrigerante CALIENTE O rpm ALTA ENTONCES high → reducir carga",
-             operator="or",
-             antecedents=[{"sensor": "coolant_temp", "term": "hot"}, {"sensor": "rpm", "term": "over"}],
-             consequent={"sensor": "urgency", "term": "high"},
-             action={"actuator": "load_transfer", "value": 0}, weight=1.0),
-        Rule(asset_id=gen.id, name="R3",
-             description="SI combustible BAJO ENTONCES medium → programar recarga",
-             operator="and",
-             antecedents=[{"sensor": "fuel_level", "term": "low"}],
-             consequent={"sensor": "urgency", "term": "medium"},
-             action={"actuator": "fuel_valve", "value": 1}, weight=1.0),
-        Rule(asset_id=gen.id, name="R4",
-             description="SI rpm DETENIDA Y combustible NORMAL ENTONCES high → arrancar motor",
-             operator="and",
-             antecedents=[{"sensor": "rpm", "term": "stopped"}, {"sensor": "fuel_level", "term": "normal"}],
-             consequent={"sensor": "urgency", "term": "high"},
-             action={"actuator": "starter", "value": 1}, weight=1.0),
-        Rule(asset_id=gen.id, name="R5",
-             description="SI rpm NORMAL Y voltaje NORMAL Y refrigerante NORMAL ENTONCES low → normal",
-             operator="and",
-             antecedents=[{"sensor": "rpm", "term": "normal"}, {"sensor": "voltage_out", "term": "normal"}, {"sensor": "coolant_temp", "term": "normal"}],
-             consequent={"sensor": "urgency", "term": "low"},
-             action={"actuator": "starter", "value": 0}, weight=1.0),
-    ])
-
-
-def _seed_lighting(session, location_id):
-    """Lighting system with ambient light, current, voltage sensors."""
-    light = Asset(name="lighting", label="Iluminación",
-                   description="Sistema de iluminación general del condominio",
-                   icon="sun", output_name="risk", output_label="Riesgo Eléctrico",
-                   output_min=0, output_max=100, location_id=location_id)
-    session.add(light)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=light.id, name="ambient_light", label="Luz Ambiente", unit="lux",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "dim", "type": "trimf", "params": [0, 0, 30]},
-                         {"term": "normal", "type": "trimf", "params": [20, 50, 75]},
-                         {"term": "bright", "type": "trimf", "params": [60, 85, 100]},
-                     ]),
-        SensorConfig(asset_id=light.id, name="current_draw", label="Consumo", unit="A",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [0, 0, 30]},
-                         {"term": "medium", "type": "trimf", "params": [20, 45, 70]},
-                         {"term": "high", "type": "trimf", "params": [60, 85, 100]},
-                     ]),
-        SensorConfig(asset_id=light.id, name="voltage", label="Voltaje", unit="V",
-                     min_val=100, max_val=260,
-                     mf_config=[
-                         {"term": "low", "type": "trimf", "params": [100, 100, 180]},
-                         {"term": "normal", "type": "trimf", "params": [180, 220, 240]},
-                         {"term": "high", "type": "trimf", "params": [230, 250, 260]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=light.id, name="dimmer", label="Regulador Luz", unit="%", min_val=0, max_val=100, command=100, state=True),
-        Actuator(asset_id=light.id, name="circuit_breaker", label="Breaker Circuito", unit="", min_val=0, max_val=1, command=1, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=light.id, name="R1",
-             description="SI consumo ALTO Y voltaje BAJO ENTONCES critical → cortar breaker",
-             operator="and",
-             antecedents=[{"sensor": "current_draw", "term": "high"}, {"sensor": "voltage", "term": "low"}],
-             consequent={"sensor": "risk", "term": "critical"},
-             action={"actuator": "circuit_breaker", "value": 0}, weight=1.0),
-        Rule(asset_id=light.id, name="R2",
-             description="SI consumo ALTO ENTONCES high → reducir luz",
-             operator="and",
-             antecedents=[{"sensor": "current_draw", "term": "high"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "dimmer", "value": 50}, weight=1.0),
-        Rule(asset_id=light.id, name="R3",
-             description="SI voltaje ALTO ENTONCES high → reducir carga",
-             operator="and",
-             antecedents=[{"sensor": "voltage", "term": "high"}],
-             consequent={"sensor": "risk", "term": "high"},
-             action={"actuator": "dimmer", "value": 60}, weight=1.0),
-        Rule(asset_id=light.id, name="R4",
-             description="SI voltaje NORMAL Y consumo BAJO ENTONCES low → luz normal",
-             operator="and",
-             antecedents=[{"sensor": "voltage", "term": "normal"}, {"sensor": "current_draw", "term": "low"}],
-             consequent={"sensor": "risk", "term": "low"},
-             action={"actuator": "dimmer", "value": 100}, weight=1.0),
-    ])
-
-
-def _seed_access(session, location_id):
-    """Access/security system with door, motion, battery sensors."""
-    access = Asset(name="access", label="Control de Acceso",
-                    description="Sistema de seguridad y control de acceso perimetral",
-                    icon="shield", output_name="alert", output_label="Nivel Alerta",
-                    output_min=0, output_max=100, location_id=location_id)
-    session.add(access)
-    session.flush()
-
-    session.add_all([
-        SensorConfig(asset_id=access.id, name="door_sensors", label="Sensores Puertas", unit="",
-                     min_val=0, max_val=1,
-                     mf_config=[
-                         {"term": "closed", "type": "trimf", "params": [0, 0, 0]},
-                         {"term": "open", "type": "trimf", "params": [1, 1, 1]},
-                     ]),
-        SensorConfig(asset_id=access.id, name="motion_detect", label="Detección Movimiento", unit="",
-                     min_val=0, max_val=1,
-                     mf_config=[
-                         {"term": "clear", "type": "trimf", "params": [0, 0, 0]},
-                         {"term": "detected", "type": "trimf", "params": [1, 1, 1]},
-                     ]),
-        SensorConfig(asset_id=access.id, name="battery_level", label="Batería", unit="%",
-                     min_val=0, max_val=100,
-                     mf_config=[
-                         {"term": "critical", "type": "trimf", "params": [0, 0, 15]},
-                         {"term": "low", "type": "trimf", "params": [10, 25, 40]},
-                         {"term": "normal", "type": "trimf", "params": [35, 65, 100]},
-                     ]),
-    ])
-    session.flush()
-
-    session.add_all([
-        Actuator(asset_id=access.id, name="lock", label="Cerradura Electrónica", unit="", min_val=0, max_val=1, command=1, state=True),
-        Actuator(asset_id=access.id, name="alarm", label="Alarma Perimetral", unit="", min_val=0, max_val=1, command=0, state=False),
-        Actuator(asset_id=access.id, name="camera_switch", label="Cámaras Seguridad", unit="", min_val=0, max_val=1, command=1, state=True),
-    ])
-    session.flush()
-
-    session.add_all([
-        Rule(asset_id=access.id, name="R1",
-             description="SI puerta ABIERTA Y movimiento DETECTADO ENTONCES critical → alarma + cámaras",
-             operator="and",
-             antecedents=[{"sensor": "door_sensors", "term": "open"}, {"sensor": "motion_detect", "term": "detected"}],
-             consequent={"sensor": "alert", "term": "critical"},
-             action={"actuator": "alarm", "value": 1}, weight=1.0),
-        Rule(asset_id=access.id, name="R2",
-             description="SI puerta ABIERTA ENTONCES high → activar alarma",
-             operator="and",
-             antecedents=[{"sensor": "door_sensors", "term": "open"}],
-             consequent={"sensor": "alert", "term": "high"},
-             action={"actuator": "alarm", "value": 1}, weight=1.0),
-        Rule(asset_id=access.id, name="R3",
-             description="SI batería CRÍTICA ENTONCES high → respaldo",
-             operator="and",
-             antecedents=[{"sensor": "battery_level", "term": "critical"}],
-             consequent={"sensor": "alert", "term": "high"},
-             action={"actuator": "lock", "value": 0}, weight=1.0),
-        Rule(asset_id=access.id, name="R4",
-             description="SI batería BAJA ENTONCES medium → mantenimiento",
-             operator="and",
-             antecedents=[{"sensor": "battery_level", "term": "low"}],
-             consequent={"sensor": "alert", "term": "medium"},
-             action={"actuator": "camera_switch", "value": 0}, weight=1.0),
-        Rule(asset_id=access.id, name="R5",
-             description="SI puerta CERRADA Y sin movimiento Y batería NORMAL ENTONCES none",
-             operator="and",
-             antecedents=[{"sensor": "door_sensors", "term": "closed"}, {"sensor": "motion_detect", "term": "clear"}, {"sensor": "battery_level", "term": "normal"}],
-             consequent={"sensor": "alert", "term": "none"},
-             action={"actuator": "alarm", "value": 0}, weight=1.0),
-    ])
 
 
 if __name__ == "__main__":

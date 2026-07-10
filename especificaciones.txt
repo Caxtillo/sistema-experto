@@ -1,0 +1,57 @@
+Sistema Experto 
+Funcionamiento Esperado del Sistema
+La gestión de activos críticos en entornos inmobiliarios requiere herramientas capaces de transformar datos de campo en información útil para la toma de decisiones. En el caso de Loyalty Soluciones Inmobiliarias, la operación técnica de equipos como bombas de agua, ascensores y plantas eléctricas se encuentra limitada por el uso de registros manuales, la baja trazabilidad histórica y la falta de integración entre la captura de datos en campo y la gestión gerencial.
+Actualmente, el personal técnico levanta información de forma manual en zonas donde suele existir poca o nula conectividad, como sótanos, cuartos de máquinas y fosos de ascensores. Esto retrasa la disponibilidad de los datos, dificulta su consolidación y limita la posibilidad de realizar análisis predictivos. Como consecuencia, la organización opera con información tardía o incompleta, lo que impide calcular indicadores de confiabilidad y mantener una visión objetiva del estado de los activos.
+Ante esta realidad, se propone el desarrollo de un Sistema Experto con integración IIoT, orientado a la gestión predictiva de activos críticos, con capacidad de operar en modo offline/online, sincronizar información cuando exista conectividad y procesar variables de campo mediante lógica difusa para generar un índice de salud y alertas operativas.
+•	Inspección e Ingreso de Datos en Sitio (Modo Offline): El técnico de campo se traslada al cuarto de máquinas del condominio asignado. Sin requerir conectividad a internet, abre la aplicación en su terminal móvil y accede al catálogo jerárquico de los activos. El técnico registra de forma estructurada tanto los datos cuantitativos medidos mediante herramientas portátiles (como presiones de agua, amperajes de tableros o voltaje de baterías) como sus percepciones cualitativas (como ruidos inusuales, nivel de vibración percibida o fugas visuales).
+•	Resguardo Local de la Información: Al confirmar el registro, el sistema del dispositivo móvil valida automáticamente el tipado de los datos ingresados para evitar inconsistencias y los almacena localmente en una base de datos local, garantizando la persistencia ante cierres inesperados de la aplicación o fallos de energía del terminal.
+•	Sincronización Automatizada: Una vez que el técnico de campo culmina la rutina de inspección, sale del cuarto de máquinas subterráneo y recupera la señal de red móvil  o se conecta a una red Wi-Fi estable, el dispositivo móvil detecta automáticamente la disponibilidad del canal. En segundo plano y sin requerir la intervención del usuario, inicia un proceso de unificación y migración de los registros locales hacia la base de datos central en el servidor.
+•	Ingreso de Telemetría ( Simulada): En paralelo al flujo manual de campo, el servidor del sistema recibe de forma continua datos de telemetría automática de los activos. Dad que no se cuenta con los dispositivos sensoriales reales, la telemetría no provendrá de hardware sensorizado real desplegado en campo, sino que será simulada, representando las variaciones físicas de variables críticas como la vibración y la temperatura de los motores.
+•	Procesamiento mediante Lógica Difusa y Sistema Experto: Una vez unificados los datos cuantitativos y lingüísticos en la base de datos central, se activa el motor de inferencia de lógica difusa. Este procesa las variables de entrada traduciendo el juicio subjetivo y las lecturas analógicas ruidosas a conjuntos difusos utilizando funciones de membresía continuas. Mediante la ejecución de reglas lógicas del tipo "Si-Entonces" basadas en el conocimiento experto de mantenimiento, el motor realiza la defuzzificación matemática. El sistema calcula de forma precisa dos parámetros de salida: el Índice de Salud (IS) del activo representado como un valor continuo de 0% a 10% y un semáforo de Criticidad Operativa (CO) bajo tres estados (Verde, Amarillo o Rojo).
+•	Visualización Gerencial e Indicadores de Confiabilidad: Los índices calculados alimentan directamente una consola o dashboard para el supervisor de operaciones y la gerencia general.
+(Opcional)se visualiza un mapa georreferenciado con marcadores activos de los condominios administrados, cuyo pin adopta el color del activo que presente la peor criticidad calculada. Al seleccionar un pin, se despliega la navegación jerárquica hasta descender a la ficha técnica de cada máquina, donde se visualiza la curva histórica de degradación, alertas preventivas automatizadas para agendar paradas planificadas y estadísticas clave de confiabilidad operacional como el Tiempo Medio Entre Fallas (MTBF).
+ 
+Actores del Sistema
+Rol de Usuario	Funciones Principales	Privilegios de Acceso
+Administrador del Sistema	Configuración global de la plataforma, gestión del catálogo de activos, parametrización de variables difusa.	Control total (Crear, Leer, Actualizar, Eliminar) sobre usuarios, activos, ubicaciones y parámetros de configuración.
+Supervisor de Mantenimiento	Monitoreo de rutinas en campo, validación de variables, revisión de tendencias temporales y aprobación de paradas planificadas.	Lectura total de datos históricos de telemetría y variables. Escritura y actualización en tablas de alertas y reportes de parada.
+Técnico de Campo	Ejecución de inspecciones en sitio, digitalización estructurada de variables manuales de campo y consulta de alertas locales offline.	Escritura (INSERT) de lecturas técnicas en el dispositivo local. Lectura (SELECT) restringida a activos asignados en su condominio.
+Dispositivos Iiot	Interfaz técnica para la inserción automática de datos numéricos provenientes del simulador de sensores.	Escritura (INSERT) exclusivamente sobre tablas históricas de variables telemáticas simuladas.
+Motor Difuso y Sistema Experto	Procesamiento lógico de variables unificadas, evaluación algorítmica de reglas expertas y cálculo de índices.	Lectura de variables entrantes. Escritura de registros calculados de Índice de Salud, Criticidad y Recomendaciones.
+
+ 
+Módulos del Sistema
+•	Módulo de Gestión de Activos: Permite el registro de los activos críticos siguiendo una categorización jerárquica alineada con los condominios administrados.
+•	Módulo de Captura Manual de Campo: Gestiona la interfaz del cliente móvil, estructurando formularios validados para el vaciado rápido de mediciones numéricas e impresiones lingüísticas del operario, con un diseño enfocado en la usabilidad en ambientes sin cobertura.
+•	Módulo de Telemetría y Simulación: Habilita canales de comunicación lógica para la recepción de magnitudes analógicas telemáticas. Incorpora un generador autónomo que emula lecturas mecánicas de sensores industriales para alimentar el motor experto en tiempo de ejecución sin requerir conexión física.
+•	Módulo de sincronización: Administra el flujo de conectividad, detecta cambios en la señal de red en segundo plano, controla los reintentos de conexión y previene la duplicidad de registros.
+•	Módulo de lógica difusa: Actúa como el procesador matemático del sistema experto. Se encarga de la fuzzificación de las entradas analógicas recibidas (tanto manuales como telemáticas simuladas)
+•	Módulo experto de decisión: Evalúa los resultados del motor difuso y. Determina las acciones recomendadas de mantenimiento preventivo y genera alertas de criticidad basadas en los números de prioridad de riesgo calculados.
+•	Módulo de visualización y reportes: Provee el panel interactivo de navegación para la toma de decisiones, visualiza la degradación histórica de las variables de desgaste, calcula los indicadores MTBF y exporta reportes.
+•	Módulo gestión de usuario: Controla la creación de perfiles de usuario, valida accesos lógicos y guarda una bitácora inalterable (logs de auditoría) con marca de tiempo y usuario de toda creación, modificación o eliminación de datos.
+ 
+Requisitos Funcionales del Prototipo
+Requisito	Módulo Asociado	Descripción Detallada del Requisito Funcional
+RF-01	Gestión de Activos	El sistema debe permitir el registro jerárquico de activos críticos estructurados por Condominio: Edificio - Sala de Máquinas - Ficha de Activo.
+RF-02	Captura Manual	Debe permitir el ingreso manual de variables cuantitativas analógicas y cualitativas de campo garantizando la operatividad sin conexión activa a internet.
+RF-03	Captura Manual	El sistema debe validar localmente los tipos de datos ingresados en el terminal móvil, rechazando campos nulos o caracteres alfabéticos en mediciones físicas.
+RF-04	Captura Manual	El dispositivo móvil de campo debe almacenar temporalmente cada lote de lecturas en una caché local para resguardar la información ante fallos inesperados del terminal.
+RF-05	Telemetría / Simulación	El servidor central debe disponer de endpoints para la recepción automática de parámetros simulados de telemetría, diferenciando el origen del dato
+RF-06	Sincronización	Debe validar la disponibilidad de red en segundo plano y migrar los datos acumulados locales hacia la base central una vez detectado una red estable.
+RF-07	Sincronización	Debe vincular las mediciones históricas utilizando marcas de tiempo de origen generadas al momento de hacer la captura física en el foso.
+RF-08	Lógica Difusa	El motor de inferencia debe convertir las entradas analógicas en grados de pertenencia y evaluar simultáneamente las reglas lógicas.
+RF-09	Decisión Experta	El software debe calcular cuantitativamente el Índice de Salud y clasificar la Criticidad Operativa bajo estados semafóricos (Verde, Amarillo, Rojo).
+RF-10	Visualización	El panel debe mostrar un mapa dinámico con marcadores de condominios, cuyo color cambie automáticamente según la peor criticidad registrada en sus activos.
+RF-11	Visualización	El dashboard debe mostrar indicadores históricos de confiabilidad operacional, específicamente el Tiempo Medio Entre Fallas (MTBF) medido en días.
+RF-12	Seguridad	El sistema debe implementar control de acceso por roles lógicos para asignar privilegios de escritura y lectura entre técnicos de campo, supervisores y gerentes.
+
+ 
+Requisitos No Funcionales y Criterios de Calidad
+Requisito	Atributo de Calidad	Descripción Técnica del Requisito No Funcional
+RNF-01	Disponibilidad Offline	La captura de variables técnicas y el guardado local de datos debe garantizar un funcionamiento autónomo ante la ausencia de señal de red.
+RNF-02	Integridad Transaccional	El sistema debe validar transacciones completas locales y aplicar mecanismos de control de duplicados en la base de datos central durante el proceso de sincronización.
+RNF-03	Usabilidad de Campo	El diseño de las pantallas de captura debe simplificarse, priorizando botones de selección rápida para mitigar el ingreso manual de texto largo.
+RNF-04	Seguridad de Acceso	Toda transmisión de datos telemáticos o paquetes de sincronización debe ejecutarse de forma cifrada mediante protocolos de seguridad.
+RNF-05	Escalabilidad	El diseño del motor de inferencia debe estructurarse de forma desacoplada de la base de datos central, facilitando modificar reglas o variables sin reescribir el software.
+RNF-06	Mantenibilidad	El código fuente del backend y frontend debe estar documentado modularmente, permitiendo a terceros ampliar la solución para posteriores fases funcionales.
+

@@ -3,16 +3,23 @@
 Defines the database schema with hierarchical asset organization:
 - Condominium → Building → MachineRoom → Asset
 - SensorConfig, Actuator, Rule, Event, SensorReading
-- User for role-based access control
+- User for role-based access control (many-to-many with condominiums)
 """
 
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, Boolean, Text, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, Text, JSON, DateTime, ForeignKey, Table
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
 class Base(DeclarativeBase):
     pass
+
+
+user_condominiums = Table(
+    "user_condominiums", Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("condominium_id", Integer, ForeignKey("condominiums.id"), primary_key=True),
+)
 
 
 class Condominium(Base):
@@ -21,12 +28,14 @@ class Condominium(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(200), nullable=False)
+    slug = Column(String(50), unique=True, nullable=True)
     address = Column(Text, default="")
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     buildings = relationship("Building", back_populates="condominium", cascade="all, delete-orphan")
+    users = relationship("User", secondary=user_condominiums, back_populates="condominiums")
 
 
 class Building(Base):
@@ -169,10 +178,6 @@ class Event(Base):
 
 
 class SensorReading(Base):
-    """A persisted sensor reading with timestamp.
-
-    Stores historical data for trend analysis and reporting.
-    """
     __tablename__ = "sensor_readings"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -181,20 +186,23 @@ class SensorReading(Base):
     value = Column(Float, nullable=False)
     score = Column(Float, default=0)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    sync_uuid = Column(String(36), nullable=True, index=True)
 
 
 class User(Base):
-    """System user with role-based access control."""
+    """System user with role-based access control.
+
+    Can be assigned to multiple condominiums via the user_condominiums association table.
+    """
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(100), unique=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     role = Column(String(20), nullable=False, default="technician")
-    condominium_id = Column(Integer, ForeignKey("condominiums.id"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    condominium = relationship("Condominium")
+    condominiums = relationship("Condominium", secondary=user_condominiums, back_populates="users")
     audits = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
 
 

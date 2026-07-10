@@ -3,448 +3,466 @@
 <style>
     h1 { font-size: 1.1rem; margin-bottom: 0.25rem; }
     .subtitle { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 1rem; }
-    .card { background: var(--bg-card); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; border: 1px solid var(--border); }
-    .card h2 { font-size: 0.9rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
 
-    .breadcrumb { display: flex; gap: 0.3rem; align-items: center; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.75rem; flex-wrap: wrap; }
-    .breadcrumb span { color: var(--text-muted); }
-    .breadcrumb .current { color: var(--text); font-weight: 600; }
-    .breadcrumb .sep { color: var(--text-dim); }
+    .search-bar { width: 100%; padding: 0.7rem 1rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.95rem; box-sizing: border-box; margin-bottom: 0.5rem; outline: none; }
+    .search-bar:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+    .search-bar::placeholder { color: var(--text-dim); }
 
-    .hierarchy-btn {
-        display: flex; align-items: center; gap: 0.6rem;
-        width: 100%; padding: 0.7rem 0.9rem; margin-bottom: 0.4rem;
-        border: 1px solid var(--border); border-radius: 10px;
-        background: var(--bg-body); color: var(--text);
-        font-size: 0.85rem; font-weight: 500; cursor: pointer;
-        transition: all 0.15s; text-align: left;
-    }
-    .hierarchy-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
-    .hierarchy-btn .icon { font-size: 1.2rem; min-width: 1.5rem; text-align: center; }
-    .hierarchy-btn .arrow { margin-left: auto; color: var(--text-dim); font-size: 0.8rem; }
-    .hierarchy-btn .count { font-size: 0.65rem; color: var(--text-muted); background: var(--bg-card); padding: 0.1rem 0.4rem; border-radius: 9999px; margin-left: 0.3rem; }
+    .asset-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .asset-card { padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .asset-card:active { transform: scale(0.98); border-color: var(--accent); }
+    .asset-card .aname { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+    .asset-card .aloc { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.15rem; }
+    .asset-card .abadge { font-size: 0.65rem; padding: 0.1rem 0.5rem; border-radius: 9999px; background: var(--bg-body); color: var(--text-muted); margin-left: 0.3rem; }
+    .asset-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--bg-card)); }
 
-    .big-btn {
-        display: block; width: 100%; padding: 1rem;
-        border: none; border-radius: 12px;
-        font-size: 1.1rem; font-weight: 700; cursor: pointer;
-        transition: all 0.15s; text-align: center;
-        margin-bottom: 0.5rem;
-    }
-    .big-btn:active { transform: scale(0.97); }
-    .big-btn.green { background: #166534; color: #bbf7d0; border: 2px solid #22c55e; }
-    .big-btn.green:active { background: #15803d; }
-    .big-btn.yellow { background: #854d0e; color: #fef08a; border: 2px solid #ca8a04; }
-    .big-btn.yellow:active { background: #a16207; }
-    .big-btn.red { background: #991b1b; color: #fecaca; border: 2px solid #dc2626; }
-    .big-btn.red:active { background: #b91c1c; }
+    .back-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .back-row .back-btn { padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .back-row .back-btn:active { background: var(--bg-hover); }
+    .back-row .current-asset { font-weight: 700; font-size: 0.95rem; flex: 1; }
 
-    .qual-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
-    .qual-btn { padding: 0.8rem 0.5rem; border-radius: 10px; border: 2px solid var(--border); background: var(--bg-body); cursor: pointer; text-align: center; transition: all 0.15s; }
-    .qual-btn:active { transform: scale(0.95); }
-    .qual-btn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--bg-body)); }
-    .qual-btn .term { font-size: 1rem; font-weight: 700; }
-    .qual-btn .sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.2rem; }
-    .qual-btn.low .term { color: #22c55e; }
-    .qual-btn.medium .term { color: #ca8a04; }
-    .qual-btn.high .term { color: #dc2626; }
+    .sensor-form { padding: 0; }
+    .sensor-card { background: var(--bg-body); border-radius: 12px; padding: 0.8rem; margin-bottom: 0.5rem; }
+    .sensor-card .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .sensor-card .label-row .sname { font-weight: 600; font-size: 0.85rem; }
+    .sensor-card .label-row .sunit { font-size: 0.7rem; color: var(--text-dim); }
 
-    .num-input-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; }
-    .num-input-row .sensor-label { min-width: 90px; font-size: 0.8rem; color: var(--text); }
-    .num-input-row .sensor-unit { font-size: 0.65rem; color: var(--text-dim); }
-    .num-input-row input[type=number] {
-        flex: 1; padding: 0.6rem; font-size: 1.1rem; font-weight: 600;
-        background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px;
-        color: var(--text); text-align: center;
-    }
-    .num-input-row input[type=number]:focus { outline: none; border-color: var(--accent); }
-    .num-stepper { display: flex; gap: 0; }
-    .num-stepper button {
-        padding: 0.5rem 0.8rem; font-size: 1rem; font-weight: 700;
-        border: 1px solid var(--border); background: var(--bg-hover); color: var(--text);
-        cursor: pointer;
-    }
-    .num-stepper button:first-child { border-radius: 6px 0 0 6px; }
-    .num-stepper button:last-child { border-radius: 0 6px 6px 0; }
-    .num-stepper button:active { background: var(--accent); color: white; }
+    .num-area { display: flex; align-items: center; gap: 0.4rem; }
+    .num-area .step { width: 2.5rem; height: 2.5rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; user-select: none; }
+    .num-area .step:active { background: var(--accent); color: white; border-color: var(--accent); }
+    .num-area input[type=number] { flex: 1; height: 2.5rem; padding: 0 0.5rem; font-size: 1.3rem; font-weight: 700; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; color: var(--text); text-align: center; -moz-appearance: textfield; }
+    .num-area input[type=number]::-webkit-inner-spin-button, .num-area input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .num-area input[type=number]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+    .num-area .range-hint { font-size: 0.65rem; color: var(--text-dim); white-space: nowrap; }
 
-    .send-btn { width: 100%; padding: 1rem; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; }
-    .send-btn.primary { background: var(--accent); color: white; }
-    .send-btn.primary:active { background: var(--accent-hover); }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .qual-row { display: flex; gap: 0.3rem; }
+    .qual-row .qbtn { flex: 1; padding: 0.6rem 0.2rem; border-radius: 10px; border: 2px solid var(--border); background: var(--bg-card); cursor: pointer; text-align: center; transition: all 0.1s; -webkit-tap-highlight-color: transparent; }
+    .qual-row .qbtn:active { transform: scale(0.95); }
+    .qual-row .qbtn.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 20%, var(--bg-card)); }
+    .qual-row .qbtn .term { font-size: 0.7rem; font-weight: 700; }
+    .qual-row .qbtn.low .term { color: #22c55e; }
+    .qual-row .qbtn.medium .term { color: #ca8a04; }
+    .qual-row .qbtn.high .term { color: #dc2626; }
 
-    .reading-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
-    .reading-item:last-child { border-bottom: none; }
-    .reading-item .time { color: var(--text-dim); font-size: 0.7rem; }
-    .reading-item .val { font-weight: 600; }
-    .reading-item .src { font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
-    .src-sim { background: #1e3a5f; color: #93c5fd; }
-    .src-real { background: #14532d; color: #bbf7d0; }
+    .mode-toggle { display: flex; gap: 0.3rem; margin-bottom: 0.75rem; }
+    .mode-toggle button { flex: 1; padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .mode-toggle button.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-card)); }
 
-    .toast { position: fixed; bottom: 1rem; left: 1rem; right: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; text-align: center; font-weight: 500; animation: slideUp 0.3s ease; z-index: 100; }
+    .dt-row { margin-bottom: 0.75rem; }
+    .dt-row label { font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem; font-weight: 500; }
+    .dt-row input[type=datetime-local] { width: 100%; padding: 0.6rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text); font-size: 0.95rem; box-sizing: border-box; }
+
+    .send-btn { width: 100%; padding: 0.9rem; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; background: var(--accent); color: white; }
+    .send-btn:active { transform: scale(0.97); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .reading-card { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+    .reading-card:last-child { border-bottom: none; }
+    .reading-card .rtime { color: var(--text-dim); font-size: 0.7rem; }
+    .reading-card .rval { font-weight: 700; }
+    .reading-card .rsrc { font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    .rsrc-real { background: #14532d; color: #bbf7d0; }
+    .rsrc-sim { background: #1e3a5f; color: #93c5fd; }
+
+    .toast { position: fixed; bottom: 1rem; left: 1rem; right: 1rem; padding: 0.8rem; border-radius: 12px; font-size: 0.85rem; text-align: center; font-weight: 600; animation: slideUp 0.3s ease; z-index: 100; }
     .toast.success { background: #14532d; border: 1px solid #22c55e; color: #bbf7d0; }
     .toast.error { background: #7c2d12; border: 1px solid #dc2626; color: #fbd38d; }
     .toast.info { background: #1e3a5f; border: 1px solid var(--accent); color: #93c5fd; }
     .toast.warning { background: #422006; border: 1px solid #ca8a04; color: #fef08a; }
     @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    .offline-banner { background: #7c2d12; color: #fbd38d; text-align: center; padding: 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 8px; margin-bottom: 0.75rem; display: none; }
-    .pending-badge { background: #ca8a04; color: #fef08a; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; margin-left: 0.5rem; }
-    .phone-sensor-btn { display: block; width: 100%; padding: 1rem; border: 2px dashed var(--accent); border-radius: 12px; background: transparent; color: var(--accent); font-size: 0.9rem; cursor: pointer; text-align: center; margin-bottom: 0.75rem; }
-    .phone-sensor-btn:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-    .back-btn { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-body); color: var(--text); font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; }
-    .back-btn:hover { background: var(--bg-hover); }
-    .back-btn .icon { font-size: 0.9rem; }
+    .offline-banner { background: #7c2d12; color: #fbd38d; text-align: center; padding: 0.5rem; font-size: 0.78rem; font-weight: 600; border-radius: 10px; margin-bottom: 0.75rem; display: none; }
+    .pending-badge { background: #ca8a04; color: #fef08a; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 9999px; }
+
+    .condo-chips { display: flex; gap: 0.35rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .condo-chip { padding: 0.4rem 0.8rem; border-radius: 9999px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.12s; -webkit-tap-highlight-color: transparent; white-space: nowrap; }
+    .condo-chip:active { transform: scale(0.95); }
+    .condo-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .form-section { display: none; }
+    .form-section.visible { display: block; }
+    .list-section.hidden { display: none; }
 </style>
 
-<h1>  Captura de Campo</h1>
-<p class="subtitle">Registre mediciones de sensores en sitio. Funciona sin conexión — los datos se guardan localmente y se sincronizan automáticamente.</p>
+<script id="hierarchyData" type="application/json">{{ hierarchy_json | safe }}</script>
+<h1> Captura de Campo</h1>
+<p class="subtitle">Busque el activo y registre las lecturas de sensores.</p>
 
 <div id="offlineBanner" class="offline-banner"> Sin conexión — Datos guardados localmente</div>
-<div id="pendingBanner" style="display:none;" class="offline-banner" style="background:#422006;color:#fef08a;"> Datos pendientes: <span id="pendingCount">0</span></div>
 
-<div id="hierarchyView" class="card">
-    <h2>  Seleccionar Ubicación</h2>
-    <div class="breadcrumb" id="breadcrumb"></div>
-    <div id="hierarchyContent"></div>
+<div id="pendingBanner" class="offline-banner" style="display:none;background:#422006;color:#fef08a;"> Datos pendientes: <span id="pendingCount">0</span></div>
+
+<div id="listSection" class="list-section">
+    <input type="text" id="searchBar" class="search-bar" placeholder="Buscar activo..." autocomplete="off">
+    <div id="condoChips" class="condo-chips"></div>
+    <div id="assetList" class="asset-list"></div>
 </div>
 
-<div id="sensorForm" class="card" style="display:none;">
-    <h2>  Ingresar Datos</h2>
-    <div class="breadcrumb" id="formBreadcrumb"></div>
-
-    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
-        <button class="back-btn" onclick="backToHierarchy()"><span class="icon">←</span> Volver</button>
-        <button class="back-btn" onclick="toggleInputMode()" id="modeToggleBtn"> Modo Cualitativo</button>
-        <button class="back-btn" onclick="startPhoneCapture()" id="phoneToggle">  Sensor</button>
+<div id="formSection" class="form-section">
+    <div class="back-row">
+        <button class="back-btn" onclick="showAssetList()">‹ Volver</button>
+        <span class="current-asset" id="currentAssetLabel"></span>
     </div>
-
-    <div id="numericInputs"></div>
-    <div id="qualitativeInputs" style="display:none;"></div>
-    <div id="phoneCaptureArea" style="display:none;"></div>
-
-    <button class="send-btn primary" id="sendBtn" onclick="sendData()">  Enviar Datos</button>
-</div>
-
-<div class="card" id="statusCard" style="display:none;">
-    <h2>  Últimos Envíos <span id="pendingBadge" class="pending-badge" style="display:none;"></span></h2>
-    <div id="lastReadings"></div>
+    <div class="dt-row">
+        <label>Fecha y hora de la lectura</label>
+        <input type="datetime-local" id="readingDatetime">
+    </div>
+    <div class="mode-toggle">
+        <button class="active" onclick="setInputMode(this, false)"> Numérico</button>
+        <button onclick="setInputMode(this, true)"> Cualitativo</button>
+    </div>
+    <div id="sensorInputs"></div>
+    <button class="send-btn" onclick="sendData()"> Enviar Datos</button>
+    <div style="margin-top:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+            <span style="font-weight:600;font-size:0.85rem;">Últimas lecturas</span>
+            <span id="pendingBadge" class="pending-badge" style="display:none;"></span>
+        </div>
+        <div id="lastReadings"></div>
+    </div>
+    <div id="pendingSection" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem;">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;cursor:pointer;" onclick="togglePendingList()">
+            <span style="font-weight:600;font-size:0.85rem;">Pendientes de sincronización</span>
+            <span id="pendingListBadge" class="pending-badge" style="display:none;"></span>
+            <span id="pendingToggle" style="font-size:0.7rem;color:var(--text-dim);">▼</span>
+        </div>
+        <div id="pendingList" style="display:none;font-size:0.8rem;"><span style="color:var(--text-dim);font-size:0.75rem;">Cargando...</span></div>
+    </div>
 </div>
 
 <script>
-    let hierarchy = [];
-    let navStack = [];
+    // ── State ──
+    let flatAssets = [];
+    let allSensorConfigs = {};
     let currentAsset = null;
     let currentSensors = [];
     let qualMode = false;
-    let phoneWatchId = null;
     let selectedQuals = {};
+    let condoList = [];
+    let selectedCondo = '';
 
     const DB_NAME = 'sensor-input-db';
-    const DB_VERSION = 1;
     const STORE_NAME = 'pending';
 
+    // ── IndexedDB offline queue ──
     function openDB() {
         return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            const req = indexedDB.open(DB_NAME, 3);
             req.onupgradeneeded = (e) => {
                 const db = e.target.result;
                 if (!db.objectStoreNames.contains(STORE_NAME))
                     db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                if (!db.objectStoreNames.contains('pages'))
+                    db.createObjectStore('pages', { keyPath: 'path' });
             };
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
         });
     }
 
+    function genUUID() {
+        return crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
     async function savePending(data) {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).add({ ...data, _ts: Date.now() });
-        await new Promise(r => { tx.oncomplete = r; });
-        updatePendingCount();
+        try {
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).add({ ...data, _capturedAt: data.captured_at || Date.now(), _retries: 0, _sync_uuid: data.sync_uuid || genUUID() });
+            await new Promise(r => { tx.oncomplete = r; });
+            updatePendingCount();
+        } catch(e) { console.warn('savePending error:', e); }
     }
 
     async function getPending() {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const all = tx.objectStore(STORE_NAME).getAll();
-        return new Promise(r => { all.onsuccess = () => r(all.result); });
+        try {
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const all = tx.objectStore(STORE_NAME).getAll();
+            return await new Promise(r => { all.onsuccess = () => r(all.result || []); });
+        } catch(e) { return []; }
     }
 
     async function clearPending(ids) {
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        for (const id of ids) tx.objectStore(STORE_NAME).delete(id);
-        await new Promise(r => { tx.oncomplete = r; });
-        updatePendingCount();
+        try {
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            for (const id of ids) tx.objectStore(STORE_NAME).delete(id);
+            await new Promise(r => { tx.oncomplete = r; });
+            updatePendingCount();
+        } catch(e) {}
     }
 
     async function updatePendingCount() {
         const pending = await getPending();
         const n = pending.length;
         const badge = document.getElementById('pendingBadge');
-        const banner = document.getElementById('pendingBanner');
-        const countEl = document.getElementById('pendingCount');
-        if (n > 0) { badge.style.display = 'inline'; badge.textContent = `${n} pendiente(s)`; banner.style.display = 'block'; countEl.textContent = n; }
-        else { badge.style.display = 'none'; banner.style.display = 'none'; }
+        if (n > 0) { badge.style.display = 'inline'; badge.textContent = `${n} pendiente(s)`; }
+        else { badge.style.display = 'none'; }
+        renderPendingList(pending);
     }
 
+    var _pendingListVisible = false;
+    function togglePendingList() {
+        _pendingListVisible = !_pendingListVisible;
+        var el = document.getElementById('pendingList');
+        el.style.display = _pendingListVisible ? 'block' : 'none';
+        document.getElementById('pendingToggle').textContent = _pendingListVisible ? '▲' : '▼';
+    }
+
+    function fmtDT(ts) {
+        if (!ts) return '';
+        var d = new Date(ts);
+        return d.toLocaleString('es-VE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'America/Caracas' });
+    }
+
+    function sensorLabel(assetName, sensorName) {
+        var cfg = allSensorConfigs[assetName];
+        if (!cfg) return sensorName;
+        var s = cfg.find(function(x) { return x.name === sensorName; });
+        return s ? (s.label || s.name) : sensorName;
+    }
+
+    async function renderPendingList(pending) {
+        var section = document.getElementById('pendingSection');
+        var badge = document.getElementById('pendingListBadge');
+        var list = document.getElementById('pendingList');
+        if (!pending) pending = await getPending();
+        if (pending.length === 0) { section.style.display = 'none'; return; }
+        section.style.display = 'block';
+        badge.textContent = pending.length + ' pendiente(s)';
+        list.innerHTML = pending.map(function(item) {
+            var label = sensorLabel(item.asset, item.sensor);
+            return '<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid var(--border);">' +
+                '<span>' + (item.asset || '') + ' › ' + label + ': <strong>' + item.value + '</strong></span>' +
+                '<span style="color:var(--text-dim);font-size:0.7rem;">' + fmtDT(item._capturedAt || item.captured_at) + '</span>' +
+                '</div>';
+        }).join('');
+    }
+
+    let _syncBackoff = 2;
+    let _syncTimer = null;
     async function syncPending() {
         const pending = await getPending();
-        if (pending.length === 0) return;
+        if (pending.length === 0) { _syncBackoff = 2; return; }
         const successIds = [];
+        let anyReachable = false;
         for (const item of pending) {
             try {
                 const r = await fetch('/api/sensor-data', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ asset: item.asset, sensor: item.sensor, value: item.value })
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ asset: item.asset, sensor: item.sensor, value: item.value, captured_at: item._capturedAt || Date.now(), sync_uuid: item._sync_uuid || genUUID() })
                 });
-                if (r.ok) successIds.push(item.id);
-            } catch(e) { break; }
+                if (r.ok) { successIds.push(item.id); anyReachable = true; }
+                else if (r.status !== 503) anyReachable = true;
+            } catch(e) {}
         }
         if (successIds.length > 0) {
             await clearPending(successIds);
             showToast(`${successIds.length} dato(s) sincronizado(s)`, 'success');
+            _syncBackoff = 2;
+        }
+        // Only retry if server is reachable (not offline)
+        const remaining = await getPending();
+        if (remaining.length > 0 && anyReachable) {
+            if (_syncTimer) clearTimeout(_syncTimer);
+            _syncTimer = setTimeout(syncPending, _syncBackoff * 1000);
+            _syncBackoff = Math.min(_syncBackoff * 2, 60);
         }
     }
 
     function isOnline() { return navigator.onLine; }
+    window.addEventListener('online', () => { document.getElementById('offlineBanner').style.display = 'none'; syncPending(); });
+    window.addEventListener('offline', () => { document.getElementById('offlineBanner').style.display = 'block'; });
 
-    window.addEventListener('online', () => {
-        document.getElementById('offlineBanner').style.display = 'none';
-        showToast('Conexión restaurada — sincronizando...', 'success');
-        syncPending();
-    });
-    window.addEventListener('offline', () => {
-        document.getElementById('offlineBanner').style.display = 'block';
-        showToast('Sin conexión — datos guardados localmente', 'warning');
-    });
-
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => navigator.serviceWorker.register('/static/service-worker.js'));
-    }
-
-    async function loadHierarchy() {
-        try {
-            const r = await fetch('/api/hierarchy');
-            hierarchy = await r.json();
-            navStack = [{ type: 'root', data: hierarchy, title: 'Condominios' }];
-            renderLevel();
-        } catch(e) { showToast('Error al cargar jerarquía', 'error'); }
-    }
-
-    function renderBreadcrumb() {
-        const bc = document.getElementById('breadcrumb');
-        bc.innerHTML = navStack.map((n, i) => {
-            const cls = i === navStack.length - 1 ? 'current' : '';
-            return `<span class="${cls}">${n.title}</span>${i < navStack.length - 1 ? '<span class="sep"> › </span>' : ''}`;
-        }).join('');
-    }
-
-    function renderLevel() {
-        const current = navStack[navStack.length - 1];
-        const container = document.getElementById('hierarchyContent');
-        renderBreadcrumb();
-
-        if (!current.data || current.data.length === 0) {
-            container.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;text-align:center;padding:1rem;">Sin elementos</div>';
-            return;
-        }
-
-        if (current.type === 'root') {
-            container.innerHTML = current.data.map(c => `
-                <button class="hierarchy-btn" onclick="navigateTo('condo', ${c.id}, '${c.name}')">
-                    <span class="icon"></span>
-                    <span>${c.name} <span class="count">${(c.buildings || []).length} edificios</span></span>
-                    <span class="arrow">›</span>
-                </button>
-            `).join('');
-        } else if (current.type === 'condo') {
-            container.innerHTML = (current.data.buildings || []).map(b => `
-                <button class="hierarchy-btn" onclick="navigateTo('building', ${b.id}, '${b.name}', ${current.data.id})">
-                    <span class="icon"></span>
-                    <span>${b.name} <span class="count">${(b.rooms || []).length} salas</span></span>
-                    <span class="arrow">›</span>
-                </button>
-            `).join('');
-        } else if (current.type === 'building') {
-            container.innerHTML = (current.data.rooms || []).map(r => `
-                <button class="hierarchy-btn" onclick="navigateTo('room', ${r.id}, '${r.name}')">
-                    <span class="icon">⚙️</span>
-                    <span>${r.name} <span class="count">${(r.assets || []).length} activos</span></span>
-                    <span class="arrow">›</span>
-                </button>
-            `).join('');
-        } else if (current.type === 'room') {
-            container.innerHTML = (current.data.assets || []).map(a => `
-                <button class="hierarchy-btn" onclick="openSensorForm('${a.name}', '${a.label}')">
-                    <span class="icon">📊</span>
-                    <span>${a.label}</span>
-                    <span class="arrow">›</span>
-                </button>
-            `).join('');
-        }
-    }
-
-    function navigateTo(type, id, title, parentId) {
-        let data;
-        if (type === 'condo') {
-            data = hierarchy.find(c => c.id === id);
-        } else if (type === 'building') {
-            const condo = hierarchy.find(c => (c.buildings || []).some(b => b.id === id));
-            data = condo ? condo.buildings.find(b => b.id === id) : null;
-        } else if (type === 'room') {
-            for (const c of hierarchy) {
-                for (const b of (c.buildings || [])) {
-                    const room = (b.rooms || []).find(r => r.id === id);
-                    if (room) { data = room; break; }
+    // ── Build flat asset list from hierarchy ──
+    function buildFlatAssets(hierarchy) {
+        const list = [];
+        condoList = ['todos', ...hierarchy.map(c => c.name)];
+        for (const c of hierarchy) {
+            for (const b of (c.buildings || [])) {
+                for (const r of (b.rooms || [])) {
+                    for (const a of (r.assets || [])) {
+                        list.push({
+                            name: a.name,
+                            label: a.label || a.name,
+                            sensors: a.sensors || [],
+                            condo: c.name,
+                            location: `${c.name} › ${b.name} › ${r.name}`,
+                        });
+                        if (a.sensors) {
+                            allSensorConfigs[a.name] = a.sensors;
+                        }
+                    }
                 }
-                if (data) break;
             }
         }
-        navStack.push({ type, data, title });
-        renderLevel();
+        return list;
     }
 
-    function backToHierarchy() {
-        document.getElementById('sensorForm').style.display = 'none';
-        document.getElementById('hierarchyView').style.display = 'block';
-        document.getElementById('statusCard').style.display = 'none';
+    // ── Render condo chips ──
+    function renderCondoChips() {
+        const container = document.getElementById('condoChips');
+        container.innerHTML = condoList.map((c, i) =>
+            `<span class="condo-chip ${(selectedCondo || 'todos') === c ? 'active' : ''}" data-condo-idx="${i}">${c === 'todos' ? 'Todos' : c}</span>`
+        ).join('');
     }
 
-    async function openSensorForm(assetName, assetLabel) {
-        currentAsset = assetName;
-        try {
-            const r = await fetch(`/api/sensor-types?asset_name=${assetName}`);
-            currentSensors = await r.json();
-            qualMode = false;
-            selectedQuals = {};
-            document.getElementById('modeToggleBtn').textContent = ' Modo Cualitativo';
-            document.getElementById('qualitativeInputs').style.display = 'none';
-            document.getElementById('numericInputs').style.display = 'block';
+    document.getElementById('condoChips').addEventListener('click', function(e) {
+        const chip = e.target.closest('.condo-chip');
+        if (!chip) return;
+        const idx = parseInt(chip.dataset.condoIdx);
+        if (isNaN(idx)) return;
+        selectedCondo = condoList[idx];
+        if (selectedCondo === 'todos') selectedCondo = '';
+        renderCondoChips();
+        renderAssetList(document.getElementById('searchBar').value);
+    });
 
-            const bc = document.getElementById('formBreadcrumb');
-            bc.innerHTML = navStack.map((n, i) =>
-                `<span class="${i === navStack.length - 1 ? 'current' : ''}">${n.title}</span>${i < navStack.length - 1 ? '<span class="sep"> › </span>' : ''}`
-            ).join('') + `<span class="sep"> › </span><span class="current">${assetLabel}</span>`;
-
-            renderNumericInputs();
-            document.getElementById('hierarchyView').style.display = 'none';
-            document.getElementById('sensorForm').style.display = 'block';
-            document.getElementById('statusCard').style.display = 'block';
-            loadLastReadings();
-        } catch(e) { showToast('Error al cargar sensores', 'error'); }
-    }
-
-    function renderNumericInputs() {
-        const container = document.getElementById('numericInputs');
-        container.innerHTML = currentSensors.map(s => `
-            <div class="num-input-row">
-                <div>
-                    <div class="sensor-label">${s.label}</div>
-                    <div class="sensor-unit">${s.unit} (${s.min_val}-${s.max_val})</div>
-                </div>
-                <div class="num-stepper">
-                    <button onclick="stepValue('${s.name}', -1)">−</button>
-                </div>
-                <input type="number" id="val-${s.name}" step="0.1" min="${s.min_val}" max="${s.max_val}"
-                       placeholder="${((s.min_val + s.max_val) / 2).toFixed(1)}">
-                <div class="num-stepper">
-                    <button onclick="stepValue('${s.name}', 1)">+</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function stepValue(name, dir) {
-        const el = document.getElementById(`val-${name}`);
-        const step = parseFloat(el.step) || 0.1;
-        const min = parseFloat(el.min) || 0;
-        const max = parseFloat(el.max) || 100;
-        let v = parseFloat(el.value) || ((min + max) / 2);
-        v = Math.max(min, Math.min(max, v + dir * step));
-        el.value = Math.round(v * 10) / 10;
-    }
-
-    function toggleInputMode() {
-        qualMode = !qualMode;
-        const btn = document.getElementById('modeToggleBtn');
-        if (qualMode) {
-            btn.textContent = ' Modo Numérico';
-            document.getElementById('numericInputs').style.display = 'none';
-            renderQualitativeInputs();
-            document.getElementById('qualitativeInputs').style.display = 'block';
-        } else {
-            btn.textContent = ' Modo Cualitativo';
-            document.getElementById('qualitativeInputs').style.display = 'none';
-            document.getElementById('numericInputs').style.display = 'block';
+    // ── Render asset list with search + condo filter ──
+    function renderAssetList(filter) {
+        const container = document.getElementById('assetList');
+        const q = (filter || '').toLowerCase();
+        let items = flatAssets;
+        if (selectedCondo) items = items.filter(a => a.condo === selectedCondo);
+        if (q) items = items.filter(a => a.label.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.location.toLowerCase().includes(q));
+        if (items.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:1.5rem;">Sin resultados</div>';
+            return;
         }
+        container.innerHTML = items.map(a =>
+            `<div class="asset-card" onclick="selectAsset('${a.name}')">
+                <div class="aname">${a.label}</div>
+                <div class="aloc">${a.location}</div>
+            </div>`
+        ).join('');
     }
 
-    function getQualitativeOptions(mfConfig) {
-        if (!mfConfig || mfConfig.length === 0) return [];
-        const termMap = {
-            'low': { label: 'Bajo', cls: 'low' },
-            'medium': { label: 'Medio', cls: 'medium' },
-            'high': { label: 'Alto', cls: 'high' },
-            'none': { label: 'Normal', cls: 'low' },
-            'critical': { label: 'Crítico', cls: 'high' },
-            'very_low': { label: 'Muy Bajo', cls: 'low' },
-            'empty': { label: 'Vacío', cls: 'high' },
-            'clear': { label: 'Despejado', cls: 'low' },
-            'detected': { label: 'Detectado', cls: 'high' },
-            'heavy': { label: 'Denso', cls: 'high' },
-            'normal': { label: 'Normal', cls: 'low' },
-            'stable': { label: 'Estable', cls: 'low' },
-            'moderate': { label: 'Moderado', cls: 'medium' },
-            'erratic': { label: 'Errátil', cls: 'high' },
-            'cool': { label: 'Frío', cls: 'low' },
-            'cold': { label: 'Frío', cls: 'low' },
-            'warm': { label: 'Cálido', cls: 'medium' },
-            'hot': { label: 'Caliente', cls: 'high' },
-            'dim': { label: 'Débil', cls: 'low' },
-            'bright': { label: 'Fuerte', cls: 'high' },
-            'closed': { label: 'Cerrada', cls: 'low' },
-            'open': { label: 'Abierta', cls: 'high' },
-            'stopped': { label: 'Detenido', cls: 'high' },
-            'over': { label: 'Exceso', cls: 'high' },
-            'slow': { label: 'Lento', cls: 'medium' },
-            'fast': { label: 'Rápido', cls: 'high' },
-            'elevated': { label: 'Elevada', cls: 'medium' },
-        };
-        return mfConfig.map(mf => termMap[mf.term] || { label: mf.term, cls: 'low' });
+    // ── Search handler ──
+    let _searchTimer = null;
+    document.getElementById('searchBar').addEventListener('input', function() {
+        if (_searchTimer) clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(() => renderAssetList(this.value), 150);
+    });
+
+    // ── Asset selection ──
+    function selectAsset(assetName) {
+        const asset = flatAssets.find(a => a.name === assetName);
+        if (!asset) return;
+        currentAsset = assetName;
+        currentSensors = allSensorConfigs[assetName] || [];
+        qualMode = false;
+        selectedQuals = {};
+
+        document.getElementById('listSection').classList.add('hidden');
+        document.getElementById('formSection').classList.add('visible');
+        document.getElementById('currentAssetLabel').textContent = asset.label;
+
+        const dtInput = document.getElementById('readingDatetime');
+        const now = new Date();
+        now.setSeconds(0, 0);
+        dtInput.value = now.toISOString().slice(0, 16);
+
+        renderSensorInputs();
+        document.querySelector('.mode-toggle button:first-child').classList.add('active');
+        document.querySelector('.mode-toggle button:last-child').classList.remove('active');
+        loadLastReadings();
     }
 
-    function getDefaultValueForTerm(sensor, term) {
-        if (!sensor.mf_config) return (sensor.min_val + sensor.max_val) / 2;
-        const mf = sensor.mf_config.find(m => m.term === term);
-        if (!mf || !mf.params || mf.params.length < 3) return (sensor.min_val + sensor.max_val) / 2;
-        return (mf.params[0] + mf.params[2]) / 2;
+    function showAssetList() {
+        document.getElementById('formSection').classList.remove('visible');
+        document.getElementById('listSection').classList.remove('hidden');
+        currentAsset = null;
     }
 
-    function renderQualitativeInputs() {
-        const container = document.getElementById('qualitativeInputs');
+    // ── Sensor form ──
+    const QUAL_LEVELS = [
+        { term: 'muy_bajo', label: 'Muy Bajo', short: 'MB', cls: 'low', pct: 10 },
+        { term: 'bajo', label: 'Bajo', short: 'BA', cls: 'low', pct: 30 },
+        { term: 'medio', label: 'Medio', short: 'ME', cls: 'medium', pct: 50 },
+        { term: 'alto', label: 'Alto', short: 'AL', cls: 'high', pct: 70 },
+        { term: 'muy_alto', label: 'Muy Alto', short: 'MA', cls: 'high', pct: 90 },
+    ];
+
+    function setInputMode(btn, mode) {
+        qualMode = mode;
+        document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderSensorInputs();
+    }
+
+    function renderSensorInputs() {
+        const container = document.getElementById('sensorInputs');
+        if (!container) return;
         container.innerHTML = currentSensors.map(s => {
-            const opts = getQualitativeOptions(s.mf_config);
-            const selected = selectedQuals[s.name] || '';
-            return `<div style="margin-bottom:1rem;">
-                <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.4rem;">${s.label}</div>
-                <div class="qual-grid">
-                    ${opts.map(o => `
-                        <button class="qual-btn ${o.cls} ${selected === o.label ? 'selected' : ''}"
-                                onclick="selectQual('${s.name}','${o.label}')">
-                            <div class="term">${o.label}</div>
-                        </button>
-                    `).join('')}
+            if (qualMode) {
+                const selected = selectedQuals[s.name] || '';
+                return `<div class="sensor-card">
+                    <div class="label-row">
+                        <span class="sname">${s.label}</span>
+                        <span class="sunit">${s.unit}</span>
+                    </div>
+                    <div class="qual-row">
+                        ${QUAL_LEVELS.map(l => `
+                            <button class="qbtn ${l.cls} ${selected === l.label ? 'selected' : ''}" onclick="selectQual('${s.name}','${l.label}')">
+                                <div class="term">${l.short}</div>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+            const rng = s.max_val - s.min_val;
+            const step = rng > 100 ? 1 : rng > 10 ? 0.5 : 0.1;
+            return `<div class="sensor-card">
+                <div class="label-row">
+                    <span class="sname">${s.label}</span>
+                    <span class="sunit">${s.unit}</span>
+                </div>
+                <div class="num-area">
+                    <button class="step" onmousedown="startStep('${s.name}', -1, ${step}, ${s.min_val}, ${s.max_val})" onmouseup="stopStep()" onmouseleave="stopStep()" ontouchstart="startStep('${s.name}', -1, ${step}, ${s.min_val}, ${s.max_val})" ontouchend="stopStep()">−</button>
+                    <input type="number" id="val-${s.name}" step="${step}" min="${s.min_val}" max="${s.max_val}" value="${((s.min_val + s.max_val) / 2).toFixed(step < 1 ? 1 : 0)}" inputmode="decimal">
+                    <button class="step" onmousedown="startStep('${s.name}', 1, ${step}, ${s.min_val}, ${s.max_val})" onmouseup="stopStep()" onmouseleave="stopStep()" ontouchstart="startStep('${s.name}', 1, ${step}, ${s.min_val}, ${s.max_val})" ontouchend="stopStep()">+</button>
+                    <span class="range-hint">${s.min_val}-${s.max_val}</span>
                 </div>
             </div>`;
         }).join('');
     }
 
+    let _stepInterval = null;
+    function startStep(name, dir, step, min, max) {
+        const el = document.getElementById(`val-${name}`);
+        if (!el) return;
+        let v = parseFloat(el.value);
+        if (isNaN(v) || v < min || v > max) v = (min + max) / 2;
+        v = Math.max(min, Math.min(max, v + dir * step));
+        el.value = Math.round(v * 100) / 100;
+        _stepInterval = setInterval(() => {
+            let cur = parseFloat(el.value);
+            if (isNaN(cur)) cur = (min + max) / 2;
+            cur = Math.max(min, Math.min(max, cur + dir * step));
+            el.value = Math.round(cur * 100) / 100;
+        }, 150);
+    }
+    function stopStep() { if (_stepInterval) { clearInterval(_stepInterval); _stepInterval = null; } }
+
     function selectQual(sensor, label) {
         selectedQuals[sensor] = selectedQuals[sensor] === label ? '' : label;
-        renderQualitativeInputs();
+        renderSensorInputs();
+    }
+
+    function getQualPctValue(sensor, label) {
+        const level = QUAL_LEVELS.find(l => l.label === label);
+        if (!level) return (sensor.min_val + sensor.max_val) / 2;
+        return sensor.min_val + (level.pct / 100) * (sensor.max_val - sensor.min_val);
+    }
+
+    function validateSensorValue(s, val) {
+        if (val === null || val === undefined || val === '') return 'Valor vacío';
+        const num = typeof val === 'number' ? val : parseFloat(val);
+        if (isNaN(num)) return `'${val}' no es un número válido`;
+        if (num < s.min_val || num > s.max_val) return `${num.toFixed(1)} fuera de rango [${s.min_val}, ${s.max_val}]`;
+        return null;
     }
 
     function showToast(msg, type) {
@@ -457,128 +475,153 @@
     }
 
     async function sendData() {
-        const btn = document.getElementById('sendBtn');
+        const btn = document.querySelector('.send-btn');
         btn.disabled = true; btn.textContent = 'Enviando...';
-        let sent = 0;
+        let sent = 0, queued = 0, errors = [];
 
         for (const s of currentSensors) {
             let val;
             if (qualMode) {
                 const label = selectedQuals[s.name];
                 if (!label) continue;
-                const opts = getQualitativeOptions(s.mf_config);
-                const found = opts.find(o => o.label === label);
-                const term = found ? s.mf_config.find(m => {
-                    const t = { 'Bajo':'low','Medio':'medium','Alto':'high','Normal':'low','Crítico':'high',
-                        'Muy Bajo':'very_low','Vacío':'empty','Despejado':'clear','Detectado':'detected',
-                        'Denso':'heavy','Estable':'stable','Moderado':'moderate','Errátil':'erratic',
-                        'Frío':'cold','Cálido':'warm','Caliente':'hot','Débil':'dim','Fuerte':'bright',
-                        'Cerrada':'closed','Abierta':'open','Detenido':'stopped','Exceso':'over',
-                        'Lento':'slow','Rápido':'fast','Elevada':'elevated' }[label] || label;
-                    return m.term === t;
-                }) : null;
-                if (!found || !found.term) continue;
-                val = getDefaultValueForTerm(s, found.term);
+                val = getQualPctValue(s, label);
             } else {
                 const el = document.getElementById(`val-${s.name}`);
-                val = parseFloat(el.value);
-                if (isNaN(val) || val < s.min_val || val > s.max_val) continue;
+                val = el.value;
+                const err = validateSensorValue(s, val);
+                if (err) { errors.push(`${s.label}: ${err}`); continue; }
+                val = parseFloat(val);
             }
-
-            const payload = { asset: currentAsset, sensor: s.name, value: val };
+            const dtVal = document.getElementById('readingDatetime')?.value;
+            const captured_at = dtVal ? new Date(dtVal + ':00').getTime() : Date.now();
+            const payload = { asset: currentAsset, sensor: s.name, value: val, captured_at, sync_uuid: genUUID() };
             try {
                 if (isOnline()) {
                     const r = await fetch('/api/sensor-data', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        credentials: 'same-origin', body: JSON.stringify(payload)
                     });
                     if (!r.ok) throw new Error('Server error');
                 } else { throw new Error('Offline'); }
                 sent++;
-            } catch(e) { await savePending(payload); sent++; }
+            } catch(e) { await savePending(payload); queued++; sent++; }
         }
 
         if (sent > 0) {
-            showToast(`${sent} sensor(es) enviado(s)`, isOnline() ? 'success' : 'warning');
+            let msg = `${sent} sensor(es) procesado(s)`;
+            if (queued > 0) msg = `${queued} pendiente(s) de sincronización`;
+            if (errors.length > 0) msg += `. ${errors.length} rechazado(s)`;
+            showToast(msg, queued > 0 ? 'warning' : 'success');
+            if (errors.length > 0) console.warn('Errores:', errors);
+        } else if (errors.length > 0) {
+            showToast(errors[0], 'error');
         } else {
             showToast('Seleccione o ingrese al menos un valor válido', 'error');
         }
-        loadLastReadings();
-        btn.disabled = false; btn.textContent = '  Enviar Datos';
-    }
-
-    let phoneCaptureActive = false;
-    function startPhoneCapture() {
-        phoneCaptureActive = !phoneCaptureActive;
-        const btn = document.getElementById('phoneToggle');
-        const area = document.getElementById('phoneCaptureArea');
-
-        if (!phoneCaptureActive) {
-            btn.textContent = '  Sensor';
-            area.style.display = 'none';
-            if (phoneWatchId) { clearInterval(phoneWatchId); phoneWatchId = null; }
-            return;
-        }
-        btn.textContent = '  Detener Sensor';
-        area.style.display = 'block';
-        area.innerHTML = currentSensors.map(s => `
-            <div style="margin-bottom:0.5rem;background:var(--bg-body);border-radius:8px;padding:0.75rem;">
-                <div style="display:flex;justify-content:space-between;">
-                    <span style="font-weight:600;font-size:0.85rem;">${s.label}</span>
-                    <span style="font-size:1.2rem;font-weight:800;color:var(--accent);" id="phone-val-${s.name}">--</span>
-                </div>
-                <div style="font-size:0.65rem;color:var(--text-dim);">${s.unit} (${s.min_val}-${s.max_val})</div>
-            </div>
-        `).join('');
-
-        phoneWatchId = setInterval(async () => {
-            if (!currentAsset) return;
-            for (const s of currentSensors) {
-                const el = document.getElementById(`phone-val-${s.name}`);
-                let val = s.min_val + Math.random() * (s.max_val - s.min_val) * 0.3;
-                val = Math.round(Math.max(s.min_val, Math.min(s.max_val, val)) * 10) / 10;
-                if (el) el.textContent = val.toFixed(1);
-                const payload = { asset: currentAsset, sensor: s.name, value: val };
-                try {
-                    if (isOnline()) {
-                        const r = await fetch('/api/sensor-data', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        if (!r.ok) throw new Error('err');
-                    } else { throw new Error('offline'); }
-                } catch(e) { await savePending(payload); }
-            }
-            loadLastReadings();
-        }, 3000);
+        btn.disabled = false; btn.textContent = ' Enviar Datos';
     }
 
     async function loadLastReadings() {
         try {
-            const r = await fetch('/api/events');
+            const r = await fetch('/api/events', { credentials: 'same-origin' });
             if (!r.ok) return;
             const events = await r.json();
             const container = document.getElementById('lastReadings');
             const relevant = events.filter(e => e.asset === currentAsset).slice(0, 8);
             if (relevant.length === 0) {
-                container.innerHTML = '<div style="color:#64748b;font-size:0.8rem;">Sin datos aún</div>';
+                container.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem;">Sin datos aún</div>';
                 return;
             }
             container.innerHTML = relevant.map(e => {
-                const isSim = e.from === 'lectura' && e.type === 'info';
-                return `<div class="reading-item">
-                    <span class="time">${e.time}</span>
+                const isReal = e.from === 'lectura' && e.type === 'info';
+                return `<div class="reading-card">
+                    <span class="rtime">${e.time}</span>
                     <span>${e.asset_name}</span>
-                    <span class="val">${e.to}</span>
-                    <span class="src ${isSim ? 'src-real' : 'src-sim'}">${isSim ? 'REAL' : 'SIM'}</span>
+                    <span class="rval">${e.to}</span>
+                    <span class="rsrc ${isReal ? 'rsrc-real' : 'rsrc-sim'}">${isReal ? 'REAL' : 'SIM'}</span>
                 </div>`;
             }).join('');
         } catch(e) {}
     }
 
-    loadHierarchy();
-    setInterval(loadLastReadings, 5000);
+    // ── Init ──
+    async function init() {
+        let hierarchy = [];
+        try {
+            const el = document.getElementById('hierarchyData');
+            if (el && el.textContent) {
+                const data = JSON.parse(el.textContent);
+                if (Array.isArray(data) && data.length > 0) hierarchy = data;
+            }
+            if (hierarchy.length === 0) {
+                const r = await fetch('/api/hierarchy');
+                if (r.ok) hierarchy = await r.json();
+            }
+        } catch(e) {}
+
+        if (hierarchy.length === 0) {
+            document.getElementById('assetList').innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem;">Sin conexión</div>';
+            return;
+        }
+
+        flatAssets = buildFlatAssets(hierarchy);
+        renderCondoChips();
+        renderAssetList();
+
+        const assetName = new URLSearchParams(window.location.search).get('asset');
+        if (assetName && flatAssets.some(a => a.name === assetName)) {
+            selectAsset(assetName);
+            document.getElementById('searchBar').value = assetName;
+        }
+    }
+
+    init();
     updatePendingCount();
+    syncPending();
     if (!isOnline()) document.getElementById('offlineBanner').style.display = 'block';
+    // ── Save this page to IndexedDB so the SW can serve it offline ──
+    (function() {
+        if (!navigator.onLine) return;
+        var req = indexedDB.open('sensor-input-db', 2);
+        req.onupgradeneeded = function(e) {
+            var db = e.target.result;
+            if (!db.objectStoreNames.contains('pending'))
+                db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
+            if (!db.objectStoreNames.contains('pages'))
+                db.createObjectStore('pages', { keyPath: 'path' });
+        };
+        req.onsuccess = function() {
+            var db = req.result;
+            var tx = db.transaction('pages', 'readwrite');
+            tx.objectStore('pages').put({ path: '/sensor-input', html: document.documentElement.outerHTML });
+        };
+    })();
+
+    // Poll every 1s to keep pending list in sync (robust against race conditions)
+    setInterval(async function() {
+        try {
+            var n = await getPending();
+            if (Array.isArray(n)) n = n.length;
+            var badge = document.getElementById('pendingBadge');
+            var section = document.getElementById('pendingSection');
+            var list = document.getElementById('pendingList');
+            if (badge) {
+                if (n > 0) { badge.style.display = 'inline'; badge.textContent = n + ' pendiente(s)'; }
+                else { badge.style.display = 'none'; }
+            }
+            if (section && list) {
+                if (n > 0) { section.style.display = 'block'; }
+                else { section.style.display = 'none'; return; }
+                var items = await getPending();
+                list.innerHTML = items.map(function(item) {
+                    var label = sensorLabel(item.asset, item.sensor);
+                    return '<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid var(--border);">' +
+                        '<span>' + (item.asset || '') + ' › ' + label + ': <strong>' + item.value + '</strong></span>' +
+                        '<span style="color:var(--text-dim);font-size:0.7rem;">' + fmtDT(item._capturedAt || item.captured_at) + '</span>' +
+                        '</div>';
+                }).join('');
+            }
+        } catch(e) {}
+    }, 1000);
 </script>
 {% endblock %}

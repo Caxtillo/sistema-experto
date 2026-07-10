@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    h1 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; text-align: center; }
+    .url-display { font-size: 1rem; font-weight: 700; color: var(--accent); word-break: break-all; margin: 1rem 0; padding: 0.75rem; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border); }
+    .qr-container { margin: 1.5rem auto; max-width: 300px; }
+    .qr-container canvas, .qr-container img { width: 100%; height: auto; border-radius: 8px; }
+    .btn { display: inline-block; padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .hint { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.75rem; }
+</style>
+<h1>  Acceso Móvil</h1>
+<div class="card">
+    {% if tunnel_url %}
+    <p style="font-size:0.85rem;color:var(--text-muted);">Escanea el QR con tu celular o abre la URL:</p>
+    <div class="url-display">{{ tunnel_url }}</div>
+    <div class="qr-container">
+        <div id="qrcode"></div>
+    </div>
+    <a href="{{ tunnel_url }}" class="btn btn-primary" target="_blank">  Abrir en nueva pestaña</a>
+    <div class="hint">  HTTPS funciona — el PWA se puede instalar desde Brave/Chrome</div>
+    {% else %}
+    <p style="color:var(--text-muted);">No hay túnel activo. Ejecutá <code>start-tunnel.ps1</code> en el servidor.</p>
+    {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+    var url = "{{ tunnel_url }}";
+    if (url) {
+        new QRCode(document.getElementById("qrcode"), { text: url, width: 300, height: 300 });
+    }
+</script>
+{% endblock %}

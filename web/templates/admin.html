@@ -50,8 +50,8 @@
 
 <div class="tabs">
     <button class="active" onclick="switchTab('users')" id="tabUsers"> Usuarios</button>
-    <button onclick="switchTab('audit')" id="tabAudit"> Auditoría</button>
-    <button onclick="switchTab('hierarchy')" id="tabHierarchy"> Jerarquía</button>
+    <button onclick="switchTab('audit')" id="tabAudit" {% if role == 'supervisor' %}style="display:none"{% endif %}> Auditoría</button>
+    <button onclick="switchTab('hierarchy')" id="tabHierarchy" {% if role == 'supervisor' %}style="display:none"{% endif %}> Jerarquía</button>
 </div>
 
 <div class="tab-content active" id="tabUsersContent">
@@ -83,6 +83,13 @@
             <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
             <tbody id="auditTableBody"></tbody>
         </table>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.75rem;font-size:0.78rem;">
+            <span id="auditInfo" style="color:var(--text-dim);"></span>
+            <div style="display:flex;gap:0.4rem;">
+                <button class="btn btn-sm" id="auditPrev" onclick="_auditPage--;loadAudit();" disabled> ← Anterior</button>
+                <button class="btn btn-sm" id="auditNext" onclick="_auditPage++;loadAudit();">Siguiente →</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -143,15 +150,17 @@
         }
         tbody.innerHTML = users.map(u => {
             const roleLabels = { admin: 'Administrador', supervisor: 'Supervisor', technician: 'Técnico' };
+            const isSupervisor = '{{ role }}' === 'supervisor';
+            const showActions = !isSupervisor || (u.role === 'technician' && u.condominium_id === {{ condominium_id | tojson }});
             return `<tr>
                 <td>${u.id}</td>
                 <td><strong>${u.username}</strong></td>
                 <td><span class="badge ${u.role === 'admin' ? 'badge-high' : u.role === 'supervisor' ? 'badge-medium' : 'badge-low'}">${roleLabels[u.role] || u.role}</span></td>
-                <td style="color:var(--text-muted);">${u.condominium_id ? 'ID: ' + u.condominium_id : '—'}</td>
+                <td style="color:var(--text-muted);">${u.condominium_name || '—'}</td>
                 <td style="color:var(--text-dim);font-size:0.7rem;">${u.created_at}</td>
-                <td>
+                <td>${showActions ? `
                     <button class="btn btn-primary btn-sm" onclick="editUser(${u.id})">Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')">Eliminar</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')">Eliminar</button>` : '—'}
                 </td>
             </tr>`;
         }).join('');
@@ -162,15 +171,34 @@
         document.getElementById('userModalTitle').textContent = user ? 'Editar Usuario' : 'Nuevo Usuario';
         document.getElementById('userModalUsername').value = user ? user.username : '';
         document.getElementById('userModalPassword').value = '';
-        document.getElementById('userModalRole').value = user ? user.role : 'technician';
+        const isSupervisor = '{{ role }}' === 'supervisor';
+        const roleSelect = document.getElementById('userModalRole');
+        if (isSupervisor) {
+            roleSelect.value = 'technician';
+            roleSelect.disabled = true;
+        } else {
+            roleSelect.value = user ? user.role : 'technician';
+            roleSelect.disabled = false;
+        }
         const condoSelect = document.getElementById('userModalCondominium');
         try {
             const r = await fetch('/api/hierarchy');
             const condos = await r.json();
-            condoSelect.innerHTML = '<option value="">Ninguno</option>' +
-                condos.map(c => `<option value="${c.id}" ${user && user.condominium_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+            if (isSupervisor) {
+                const myCondoId = {{ condominium_id | tojson }};
+                const myCondo = condos.find(c => c.id === myCondoId);
+                condoSelect.innerHTML = myCondo
+                    ? `<option value="${myCondo.id}" selected>${myCondo.name}</option>`
+                    : '<option value="">Ninguno</option>';
+                condoSelect.disabled = true;
+            } else {
+                condoSelect.innerHTML = '<option value="">Ninguno</option>' +
+                    condos.map(c => `<option value="${c.id}" ${user && user.condominium_id === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+                condoSelect.disabled = false;
+            }
         } catch (e) {
             condoSelect.innerHTML = '<option value="">Ninguno</option>';
+            condoSelect.disabled = isSupervisor;
         }
         document.getElementById('userModal').classList.add('show');
     }
@@ -223,9 +251,15 @@
         loadUsers();
     }
 
+    let _auditPage = 0;
+    const _auditPageSize = 50;
+
     async function loadAudit() {
-        const r = await fetch('/api/audit?limit=200');
-        let logs = await r.json();
+        const offset = _auditPage * _auditPageSize;
+        const r = await fetch(`/api/audit?limit=${_auditPageSize}&offset=${offset}`);
+        const resp = await r.json();
+        let logs = resp.data;
+        const total = resp.total;
         const filter = (document.getElementById('auditFilter').value || '').toLowerCase();
         const actionFilter = document.getElementById('auditActionFilter').value;
         if (filter) logs = logs.filter(l => l.username.toLowerCase().includes(filter) || l.action.toLowerCase().includes(filter) || l.detail.toLowerCase().includes(filter));
@@ -233,15 +267,20 @@
         const tbody = document.getElementById('auditTableBody');
         if (logs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" class="empty">Sin registros de auditoría</td></tr>';
-            return;
+        } else {
+            const actionLabels = { login: 'Inicio sesión', cambio_escenario: 'Escenario', comando_actuador: 'Actuador', falla_aleatoria: 'Falla' };
+            tbody.innerHTML = logs.map(l => `<tr>
+                <td style="color:var(--text-dim);font-size:0.7rem;white-space:nowrap;">${l.timestamp}</td>
+                <td><strong>${l.username}</strong></td>
+                <td><span class="badge badge-medium">${actionLabels[l.action] || l.action}</span></td>
+                <td style="color:var(--text-muted);">${l.detail}</td>
+            </tr>`).join('');
         }
-        const actionLabels = { login: 'Inicio sesión', cambio_escenario: 'Escenario', comando_actuador: 'Actuador', falla_aleatoria: 'Falla' };
-        tbody.innerHTML = logs.slice(0, 100).map(l => `<tr>
-            <td style="color:var(--text-dim);font-size:0.7rem;white-space:nowrap;">${l.timestamp}</td>
-            <td><strong>${l.username}</strong></td>
-            <td><span class="badge badge-medium">${actionLabels[l.action] || l.action}</span></td>
-            <td style="color:var(--text-muted);">${l.detail}</td>
-        </tr>`).join('');
+        const start = offset + 1;
+        const end = Math.min(offset + _auditPageSize, total);
+        document.getElementById('auditInfo').textContent = total > 0 ? `${start}–${end} de ${total}` : '0 registros';
+        document.getElementById('auditPrev').disabled = _auditPage === 0;
+        document.getElementById('auditNext').disabled = end >= total;
     }
 
     async function loadHierarchy() {

@@ -1,99 +1,78 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .summary { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .summary-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 1rem; min-width: 120px; text-align: center; flex: 1; cursor: pointer; transition: all 0.15s; }
-    .summary-item:hover { border-color: var(--accent); }
-    .summary-item .label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
-    .summary-item .value { font-size: 1rem; font-weight: 700; margin-top: 0.2rem; }
-    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-    .card { background: var(--bg-card); border-radius: 10px; padding: 1rem; border: 1px solid var(--border); transition: opacity 0.2s, border-color 0.3s; cursor: pointer; }
-    .card:hover { border-color: var(--accent); }
+    .condo-group { margin-bottom: 1.8rem; width: 100%; }
+    .condo-group.collapsed > .building-group { display: none; }
+    .condo-header { font-size: 1rem; font-weight: 800; color: var(--text); padding: 0.5rem 0.6rem; margin-bottom: 0.7rem; border-left: 4px solid var(--accent); background: var(--bg-card); border-radius: 0 8px 8px 0; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; display: flex; align-items: center; gap: 0.4rem; }
+    .condo-header .collapse-icon { margin-left: auto; font-size: 0.8rem; color: var(--text-dim); transition: transform 0.2s; }
+    .condo-header.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .building-group { margin-bottom: 0.6rem; width: 100%; margin-left: 0.8rem; }
+    .building-header { font-size: 0.82rem; font-weight: 700; color: var(--text-dim); padding: 0.3rem 0.5rem; margin-bottom: 0.5rem; border-left: 2px solid var(--border); border-radius: 0 4px 4px 0; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; display: flex; align-items: center; }
+    .building-header .collapse-icon { display: inline-block; margin-left: auto; font-size: 0.7rem; color: var(--text-dim); transition: transform 0.2s; }
+    .building-header.collapsed .collapse-icon { transform: rotate(-90deg); }
+    .building-header.collapsed + .room-row { display: none !important; }
+    .room-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; width: 100%; }
+    .card { background: var(--bg-card); border-radius: 10px; padding: 0.9rem; border: 1px solid var(--border); transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; display: flex; flex-direction: column; }
+    .card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
     .card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-    .card-header h2 { font-size: 1rem; font-weight: 600; }
-    .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
-    .sensor-item { background: var(--bg-body); padding: 0.4rem 0.6rem; border-radius: 5px; }
-    .sensor-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
-    .sensor-value { font-size: 1rem; font-weight: 700; margin-top: 0.1rem; }
-    .score-display { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
-    .score-bar { flex: 1; height: 6px; background: var(--bg-body); border-radius: 3px; overflow: hidden; }
-    .score-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
-    .score-value { font-size: 1.2rem; font-weight: 800; min-width: 3ch; }
-    .mini-chart { margin-top: 0.4rem; max-height: 50px; width: 100%; }
-    .controls { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
-    .bottom-panels { display: grid; grid-template-columns: 1.8fr 1.2fr 1.2fr 1fr; gap: 1rem; }
-    .panel { background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border); }
-    .panel-header { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; display: flex; justify-content: space-between; }
-    .panel-body { padding: 0.5rem 1rem; max-height: 300px; overflow-y: auto; }
-    .panel-body::-webkit-scrollbar { width: 4px; }
-    .panel-body::-webkit-scrollbar-track { background: var(--bg-body); }
-    .panel-body::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
-    .event-item { padding: 0.35rem 0; border-bottom: 1px solid var(--bg-body); font-size: 0.75rem; display: flex; gap: 0.4rem; align-items: flex-start; }
-    .event-item:last-child { border-bottom: none; }
-    .event-time { color: var(--text-dim); min-width: 5ch; font-size: 0.7rem; }
-    .rec-item { padding: 0.3rem 0; font-size: 0.78rem; display: flex; gap: 0.4rem; }
-    .rec-item .bullet { color: var(--accent); }
-    .scenario-btn { padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text); cursor: pointer; font-size: 0.7rem; transition: all 0.15s; }
-    .scenario-btn:hover { background: var(--bg-hover); }
-    .scenario-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-    .scenario-btn.danger.active { background: var(--danger); border-color: var(--danger); }
-    .explanation-box { background: var(--bg-body); border-radius: 6px; padding: 0.6rem; margin-top: 0.5rem; font-size: 0.78rem; color: var(--text-muted); min-height: 3.2em; display: flex; align-items: center; }
-    .explanation-box strong { color: var(--text); }
-    .timestamp { text-align: center; margin-top: 0.75rem; font-size: 0.7rem; color: var(--text-dim); }
-    .action-item { padding: 0.3rem 0; font-size: 0.72rem; border-bottom: 1px solid var(--bg-body); display: flex; gap: 0.4rem; align-items: center; }
-    .action-item:last-child { border-bottom: none; }
-    .action-time { color: var(--text-dim); min-width: 5ch; font-size: 0.65rem; }
-    .action-actuator { background: var(--bg-body); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; }
-    .alert-modal-body { font-size: 0.9rem; }
-    .alert-modal-body .alert-asset { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
-    .alert-modal-body .alert-detail { color: var(--text-muted); margin-bottom: 0.3rem; }
-    .alert-actions { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
-    @media (max-width: 1200px) { .bottom-panels { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 800px) { .bottom-panels { grid-template-columns: 1fr; } .asset-grid { grid-template-columns: 1fr; } }
+    .card-header { display: flex; justify-content: space-between; align-items: center; }
+    .card-header h2 { font-size: 0.9rem; font-weight: 600; margin: 0; }
+    .sensor-rows { margin: 0.3rem 0; }
+    .sensor-row { display: flex; align-items: center; margin-bottom: 0.2rem; width: 100%; gap: 0; }
+    .sensor-label { font-size: 0.7rem; color: var(--text-muted); width: 6.5rem; flex-shrink: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sbar-track { flex: 1; height: 8px; background: var(--bg-body); border-radius: 4px; overflow: hidden; margin: 0 0.3rem; }
+    .sbar-fill { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.4s; }
+    .sensor-val { font-size: 0.8rem; color: var(--text); width: 6.5rem; flex-shrink: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+    .score-display { display: flex; align-items: center; margin: 0.3rem 0; gap: 0; }
+    .score-bar { flex: 1; height: 8px; background: var(--bg-body); border-radius: 4px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+    .score-value { font-size: 1.3rem; font-weight: 800; min-width: 2.8rem; }
+    .chart-wrap { height: 80px; margin-top: 0.5rem; }
+    .chart-wrap.real-chart { height: 120px; }
+    .mini-chart { width: 100%; height: 100%; background: var(--bg-body); border-radius: 4px; }
+    .explanation-box { background: var(--bg-body); border-radius: 6px; padding: 0.5rem 0.6rem; margin-top: 0.4rem; font-size: 0.75rem; color: var(--text-muted); min-height: 2.5em; }
+    .explanation-box .ex-label { display: block; font-weight: 700; color: var(--text); font-size: 0.65rem; text-transform: uppercase; margin-bottom: 0.2rem; letter-spacing: 0.5px; }
+    .recs-inline { margin-top: 0.35rem; display: flex; flex-direction: column; gap: 0.15rem; }
+    .recs-inline .rec-item { color: var(--text); font-size: 0.72rem; line-height: 1.3; }
+    .data-entry-link { display:flex; align-items:center; gap:0.3rem; font-size:0.6rem; color:var(--text-dim); text-decoration:none; padding:0.15rem 0.3rem; border-radius:3px; transition:all 0.15s; touch-action:manipulation; }
+    .data-entry-link:hover { color:var(--accent); background:var(--bg-hover); }
+    .source-group { display:flex; align-items:center; gap:2px; background:var(--bg-body); border-radius:4px; padding:1px; border:1px solid var(--border); }
+    .source-btn { padding:0.1rem 0.35rem; font-size:0.55rem; border:none; cursor:pointer; border-radius:3px; font-weight:600; transition:all 0.15s; background:transparent; color:var(--text-dim); touch-action:manipulation; }
+    .source-btn.active-sim { background:#1e3a5f; color:#93c5fd; }
+    .source-btn.active-real { background:#14532d; color:#bbf7d0; }
+    .source-btn:not(.active-sim):not(.active-real):hover { color:var(--text); }
+    @media (max-width: 1100px) { .room-row { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 800px) { .room-row { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .room-row { grid-template-columns: 1fr; } }
+
+    .dash-header { margin-bottom: 1rem; }
+    .dash-header h1 { font-size: 1.3rem; font-weight: 800; color: var(--text); margin: 0 0 0.25rem 0; }
+    .dash-header p { font-size: 0.78rem; color: var(--text-muted); margin: 0; line-height: 1.4; max-width: 650px; }
 </style>
 
-<div class="summary" id="summary"></div>
-<div class="asset-grid" id="assetGrid"></div>
-
-<div class="bottom-panels">
-    <div class="panel">
-        <div class="panel-header"><span>Recomendaciones</span><span id="rec-asset" style="color:#64748b;font-size:0.7rem;">--</span></div>
-        <div class="panel-body" id="rec-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Seleccione un activo</div></div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><span>Actuadores</span><span id="act-asset" style="color:#64748b;font-size:0.7rem;">--</span></div>
-        <div class="panel-body" id="act-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Seleccione un activo</div></div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><span>Eventos</span><span id="event-count" style="color:#64748b;font-size:0.7rem;">0</span></div>
-        <div class="panel-body" id="event-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin eventos</div></div>
-    </div>
-    <div class="panel">
-        <div class="panel-header"><span>Acciones</span><span id="action-count" style="color:#64748b;font-size:0.7rem;">0</span></div>
-        <div class="panel-body" id="action-list"><div class="no-data" style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin acciones</div></div>
-    </div>
+<div class="dash-header">
+    <h1>Panel de Monitoreo</h1>
+    <p>Monitoreo en tiempo real del estado de los activos críticos en los condominios. Los valores de salud (IS) se actualizan cada 2 segundos. Colapsa o expande condominios para enfocarte en los activos que necesitas supervisar.</p>
 </div>
 
-<div class="timestamp" id="timestamp">Conectando...</div>
+<div id="assetGrid"></div>
 
-<div class="modal-overlay" id="alertModal">
-    <div class="modal">
-        <h3>🚨 Alerta Crítica</h3>
-        <div class="alert-modal-body" id="alertBody"></div>
-        <div class="alert-actions">
-            <button class="btn" onclick="dismissAlert()">Cerrar</button>
-        </div>
-    </div>
-</div>
+<div class="timestamp" id="timestamp" style="visibility:hidden">Conectando con el servidor...</div>
 
 <script>
+const HIERARCHY = {{ hierarchy_json|safe }};
 let ws = null;
 let wsFallbackTimer = null;
 let pollingInterval = null;
 let audioCtx = null;
-let alertCooldowns = {};
-let toastCount = 0;
+let _wasOffline = false;
+
+// ── IndexedDB pending data (shared with sensor_input.html) ──
+function showOfflineDashboard() {
+    if (_wasOffline) return;
+    _wasOffline = true;
+    location.href = '/sensor-input';
+}
 
 const STATUS_MAP = {
     high: { cls: 'badge-high', label: 'ROJO', color: '#dc2626' },
@@ -102,19 +81,88 @@ const STATUS_MAP = {
 };
 const STATUS_ORDER = { high: 3, medium: 2, low: 1 };
 
-function simBadge(isSimulated) {
-    if (isSimulated === undefined) return '';
-    return isSimulated
-        ? '<span class="badge badge-low" style="font-size:0.6rem;margin-left:0.3rem;background:#1e3a5f;color:#93c5fd;">SIM</span>'
-        : '<span class="badge badge-low" style="font-size:0.6rem;margin-left:0.3rem;background:#14532d;color:#bbf7d0;">REAL</span>';
+function sensorHealth(val, key, meta) {
+    if (val == null) return 0;
+    const num = typeof val === 'number' ? val : parseFloat(val);
+    if (isNaN(num)) return 0;
+    const min = (meta && meta.min != null) ? meta.min : 0;
+    const max = (meta && meta.max != null) ? meta.max : 100;
+    const range = max - min || 1;
+    const pct = Math.min(100, Math.max(0, (num - min) / range * 100));
+    const k = (key || '').toLowerCase();
+    const l = ((meta && meta.label) || '').toLowerCase();
+    // Invertidos: mal cuando suben (temperatura, vibración, corriente, gas, humo, velocidad)
+    if (k.includes('vibra') || k.includes('temperatura') || k.includes('temperature') ||
+        k.includes('gas') || k.includes('humo') || k.includes('smoke') ||
+        k.includes('corriente') || k.includes('current') ||
+        k.includes('speed_var') || l.includes('var. velocidad') || l.includes('variación')) {
+        return Math.min(100, Math.max(0, 200 - 2 * pct));
+    }
+    // Centro: punto medio es más saludable (presión, caudal, presión aceite)
+    if (k === 'pressure' || k === 'oil_pressure' || k === 'flow' ||
+        l.includes('presión') || l.includes('caudal')) {
+        return Math.min(100, Math.max(0, 100 - Math.abs(pct - 50) * 2));
+    }
+    // Default: más alto = más saludable (RPM, nivel combustible)
+    return pct;
+}
+
+function buildSensorRows(asset, data) {
+    const container = document.getElementById(`sensors-${asset}`);
+    if (!container) return;
+    const meta = data.sensors_meta || {};
+    const entries = Object.entries(data.sensors || {}).filter(([k, v]) => v != null);
+    const simMap = data.is_simulated || {};
+    if (entries.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-dim);font-size:0.7rem;text-align:center;padding:0.2rem 0;">Sin datos aun</div>';
+        return;
+    }
+    container.innerHTML = entries.map(([key, val]) => {
+        const m = meta[key] || {};
+        const label = m.label || key;
+        const unit = m.unit || '';
+        const numVal = typeof val === 'number' ? val : parseFloat(val);
+        const displayVal = isNaN(numVal) ? '--' : numVal.toFixed(1);
+        const health = sensorHealth(val, key, m);
+        const pct = Math.min(100, Math.max(0, isNaN(health) ? 0 : health));
+        const barColor = pct > 66 ? '#22c55e' : pct > 33 ? '#ca8a04' : '#dc2626';
+        return `<div class="sensor-row">
+            <span class="sensor-label">${label}</span>
+            <div class="sbar-track"><div class="sbar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+            <span class="sensor-val">${displayVal}${unit ? ' ' + unit : ''}</span>
+        </div>`;
+    }).join('');
 }
 let charts = {};
 let historyData = {};
 let dataCache = {};
 let assetKeys = [];
-let lastEvents = 0;
 let selectedAsset = null;
 let prevStatuses = {};
+let _notifPerm = 'default';
+let _initialRenderDone = false;
+
+function _requestNotifPerm() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(p => { _notifPerm = p; });
+    }
+}
+
+function _showBrowserNotif(title, body, tag) {
+    if ('Notification' in window && _notifPerm === 'granted' && document.hidden) {
+        try { new Notification(title, { body, tag, icon: '/static/sensor-icon.svg' }); } catch(e) {}
+    }
+}
+const _expandedCondos = new Set(
+    HIERARCHY && HIERARCHY.length > 0 ? ['condo-' + HIERARCHY[0].id] : []
+);
+// Expand first building of first condo by default
+const _expandedBuildings = new Set(function() {
+    if (HIERARCHY && HIERARCHY[0] && HIERARCHY[0].buildings && HIERARCHY[0].buildings.length > 0) {
+        return [HIERARCHY[0].name + ' - ' + HIERARCHY[0].buildings[0].name];
+    }
+    return [];
+}());
 
 function getAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -150,97 +198,208 @@ function playAlert(status) {
     }
 }
 
-function showAlertModal(assetName, assetLabel, status, score, explanation) {
-    const modal = document.getElementById('alertModal');
-    const body = document.getElementById('alertBody');
-    const info = STATUS_MAP[status] || STATUS_MAP.low;
-    body.innerHTML = `
-        <div class="alert-asset" style="color:${info.color}">${assetLabel}</div>
-        <div class="alert-detail"><strong>Criticidad:</strong> ${info.label}</div>
-        <div class="alert-detail"><strong>Índice de Salud (IS):</strong> ${score}/100</div>
-        <div class="alert-detail"><strong>Diagnóstico:</strong> ${explanation || 'N/A'}</div>
-    `;
-    modal.classList.add('show');
-    playAlert(status);
-}
-
-function dismissAlert() {
-    document.getElementById('alertModal').classList.remove('show');
-}
-
-function showToast(msg, type) {
-    const c = document.getElementById('toastContainer');
-    const t = document.createElement('div');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
-    c.appendChild(t);
-    while (c.children.length > 3) c.firstChild.remove();
-    setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 300); }, 4000);
-}
-
-function buildSensorGrid(asset, data) {
-    const grid = document.getElementById(`sensors-${asset}`);
-    if (!grid) return;
-    const meta = data.sensors_meta || {};
-    const sim = data.is_simulated || {};
-    grid.innerHTML = Object.entries(data.sensors || {}).map(([key, val]) => {
-        const m = meta[key] || {};
-        const label = m.label || key;
-        const unit = m.unit || '';
-        const simFlag = simBadge(sim[key]);
-        return `<div class="sensor-item">
-            <div class="sensor-label">${label}${unit ? ' (' + unit + ')' : ''} ${simFlag}</div>
-            <div class="sensor-value" id="${asset}-${key}">${val != null ? Number(val).toFixed(1) : '--'}</div>
-        </div>`;
-    }).join('');
-}
-
 function renderCards(data) {
-    const grid = document.getElementById('assetGrid');
+    const container = document.getElementById('assetGrid');
     assetKeys = Object.keys(data).filter(k => data[k] && data[k].sensors);
-    grid.innerHTML = assetKeys.map(asset => {
-        const d = data[asset];
-        const info = STATUS_MAP[d.status] || STATUS_MAP.low;
-        const assetSimBadge = d.all_simulated === false
-            ? '<span class="badge badge-low" style="font-size:0.6rem;background:#14532d;color:#bbf7d0;">DATOS REALES</span>'
-            : '<span class="badge badge-low" style="font-size:0.6rem;background:#1e3a5f;color:#93c5fd;">SIMULADO</span>';
-        return `<div class="card ${selectedAsset === asset ? 'selected' : ''}" id="card-${asset}" data-asset="${asset}" style="border-color:${d.status === 'high' ? '#dc2626' : d.status === 'medium' ? '#ca8a04' : ''}">
-            <div class="card-header">
-                <h2>${d.name || asset} ${d.all_simulated !== undefined ? assetSimBadge : ''}</h2>
-                <span class="badge ${info.cls}" id="badge-${asset}">${info.label}</span>
-            </div>
-            <div class="sensor-grid" id="sensors-${asset}"></div>
-            <div class="score-display">
-                <div style="font-size:0.6rem;color:var(--text-dim);margin-bottom:0.1rem;">Índice de Salud (IS)</div>
-                <span class="score-value" style="color:${info.color}" id="${asset}-score-val">${d.score}</span>
-                <div class="score-bar"><div class="score-fill" id="${asset}-score-bar" style="width:${Math.min(d.score, 100)}%;background:${info.color}"></div></div>
-            </div>
-            <canvas class="mini-chart" id="chart-${asset}" height="40"></canvas>
-            <div class="explanation-box" id="explain-${asset}"><strong>Diagnóstico:</strong> ${d.explanation || 'Evaluando...'}</div>
-            <div class="controls" id="controls-${asset}"></div>
-        </div>`;
-    }).join('');
 
-    assetKeys.forEach(asset => {
-        const d = data[asset];
-        if (!d) return;
-        buildSensorGrid(asset, d);
-        const controls = document.getElementById(`controls-${asset}`);
-        if (d.scenarios) {
-            controls.innerHTML = d.scenarios.map(s =>
-                `<button class="scenario-btn ${s.id === 'normal' ? '' : 'danger'} ${s.id === d.current_scenario ? 'active' : ''}"
-                    onclick="event.stopPropagation();setScenario('${asset}', '${s.id}')">${s.label}</button>`
-            ).join('');
+    let html = '';
+    if (HIERARCHY) {
+        for (const condo of HIERARCHY) {
+            const condoLabel = condo.name;
+            const condoKey = 'condo-' + condo.id;
+            const isCondoExpanded = _expandedCondos.has(condoKey);
+            const buildings = (condo.buildings || []).filter(b =>
+                b.rooms && b.rooms.some(r => r.assets && r.assets.some(a => data[a.name]))
+            );
+            if (buildings.length === 0) continue;
+
+            html += `<div class="condo-group${isCondoExpanded ? '' : ' collapsed'}" data-condokey="${condoKey}">
+                <div class="condo-header${isCondoExpanded ? '' : ' collapsed'}" data-condo="${condoLabel}">
+                    <i class="fas fa-building" style="margin-right:0.2rem;color:var(--accent);"></i>${condoLabel}
+                    <span class="collapse-icon">&#9660;</span>
+                </div>`;
+
+            for (const building of buildings) {
+                const bAssets = [];
+                for (const room of (building.rooms || [])) {
+                    for (const a of (room.assets || [])) {
+                        if (data[a.name]) bAssets.push(a.name);
+                    }
+                }
+                if (bAssets.length === 0) continue;
+
+                const bLabel = condoLabel + ' - ' + building.name;
+                const isBldgExpanded = _expandedBuildings.has(bLabel);
+
+                html += `<div class="building-group">
+                    <div class="building-header${isBldgExpanded ? '' : ' collapsed'}" data-building="${bLabel.replace(/"/g, '&quot;')}">
+                        <i class="fas fa-warehouse" style="margin-right:0.3rem;color:var(--text-dim);font-size:0.7rem;"></i>${building.name}
+                        <span class="collapse-icon">&#9660;</span>
+                    </div>
+                    <div class="room-row">`;
+
+                for (const asset of bAssets) {
+                    const d = data[asset];
+                    if (!d) continue;
+                    const info = STATUS_MAP[d.status] || STATUS_MAP.low;
+                    const sourceFromClient = _clientSourceModes[asset];
+                    const isReal = sourceFromClient ? sourceFromClient === 'real' : d.data_source === 'real';
+                    const simActive = !isReal ? 'active-sim' : '';
+                    const realActive = isReal ? 'active-real' : '';
+                    const sourceGroup = d.data_source !== undefined
+                        ? `<div class="source-group" onclick="event.stopPropagation()">
+                            <button class="source-btn ${simActive}" onclick="toggleSource('${asset}','simulated')">Simulado</button>
+                            <button class="source-btn ${realActive}" onclick="toggleSource('${asset}','real')">Real</button>
+                          </div>
+                          <a href="/sensor-input?asset=${asset}" class="data-entry-link" onclick="event.stopPropagation()">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            Ingresar datos
+                          </a>
+                          <a href="/asset?id=${d.id}" class="data-entry-link" onclick="event.stopPropagation()">
+                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                            Ficha Técnica
+                          </a>`
+                        : '';
+                    html += `<div class="card ${selectedAsset === asset ? 'selected' : ''}" id="card-${asset}" data-asset="${asset}" style="border-color:${d.status === 'high' ? '#dc2626' : d.status === 'medium' ? '#ca8a04' : ''}">
+                        <div class="card-header">
+                            <h2>${d.name || asset}</h2>
+                            <span class="badge ${info.cls}" id="badge-${asset}">${info.label}</span>
+                        </div>
+                        ${sourceGroup ? `<div style="display:flex;align-items:center;gap:0.4rem;margin:0.4rem 0 0.3rem 0;font-size:0.75rem;">${sourceGroup}</div>` : ''}
+                        <div class="sensor-rows" id="sensors-${asset}"></div>
+                        <div class="score-display">
+                            <span class="sensor-label" style="font-size:0.8rem;font-weight:700;color:var(--text-dim);">Indice de Salud (IS)</span>
+                            <div class="sbar-track"><div class="sbar-fill" id="${asset}-score-bar" style="width:${Math.min(d.score, 100)}%;background:${info.color}"></div></div>
+                            <span class="sensor-val" style="font-size:1.2rem;font-weight:800;color:${info.color}" id="${asset}-score-val">${d.score}</span>
+                        </div>
+                        <div class="chart-wrap" id="chart-wrap-${asset}"><canvas class="mini-chart" id="chart-${asset}"></canvas></div>
+                        <div class="explanation-box" id="explain-${asset}"><span class="ex-label">Diagnostico</span>${d.explanation || 'Evaluando...'}${d.recommendations && d.recommendations.length ? '<div class="recs-inline">' + d.recommendations.slice(0,2).map(r => '<span class="rec-item">&rsaquo; ' + r + '</span>').join('') + '</div>' : ''}</div>
+                    </div>`;
+                }
+
+                html += '</div></div>';
+            }
+
+            html += '</div>';
         }
-    });
+    }
+    container.innerHTML = html;
+
+    for (const asset of assetKeys) {
+        const d = data[asset];
+        if (!d) continue;
+        buildSensorRows(asset, d);
+    }
 
     document.querySelectorAll('.card').forEach(c => {
         c.addEventListener('click', function(e) {
-            if (e.target.closest('.controls') || e.target.closest('.scenario-btn')) return;
+            if (e.target.closest('.controls') || e.target.closest('.scenario-btn') || e.target.closest('.source-group') || e.target.closest('.source-btn') || e.target.closest('.data-entry-link')) return;
             const asset = this.dataset.asset;
             selectAsset(asset);
         });
     });
+
+    attachCollapseHandlers();
+}
+
+function attachCollapseHandlers() {
+    const grid = document.getElementById('assetGrid');
+
+    grid.querySelectorAll('.condo-header').forEach(el => {
+        el.addEventListener('click', async function(e) {
+            if (e.target.closest('.data-entry-link') || e.target.closest('.source-group') || e.target.closest('.source-btn')) return;
+            const condoGroup = this.closest('.condo-group');
+            const condoKey = condoGroup.dataset.condokey;
+            const wasCollapsed = condoGroup.classList.contains('collapsed');
+            if (wasCollapsed) {
+                // Accordion: close all other condos
+                document.querySelectorAll('.condo-group').forEach(function(g) {
+                    if (g.dataset.condokey !== condoKey) {
+                        g.classList.add('collapsed');
+                        g.querySelector('.condo-header').classList.add('collapsed');
+                        var ck = g.dataset.condokey;
+                        if (ck) _expandedCondos.delete(ck);
+                        g.querySelectorAll('.building-header').forEach(function(bh) {
+                            var bl = bh.dataset.building;
+                            if (bl) _expandedBuildings.delete(bl);
+                        });
+                    }
+                });
+                _expandedCondos.add(condoKey);
+                // Open first building of this condo
+                var firstBldg = condoGroup.querySelector('.building-header');
+                if (firstBldg) {
+                    firstBldg.classList.remove('collapsed');
+                    var fbName = firstBldg.dataset.building;
+                    if (fbName) _expandedBuildings.add(fbName);
+                }
+            } else {
+                _expandedCondos.delete(condoKey);
+                condoGroup.querySelectorAll('.building-header').forEach(function(bh) {
+                    var bLabel = bh.dataset.building;
+                    if (bLabel) _expandedBuildings.delete(bLabel);
+                });
+            }
+            condoGroup.classList.toggle('collapsed');
+            this.classList.toggle('collapsed');
+
+            const visible = computeVisibleAssets();
+            try {
+                await fetch('/api/set-visible', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({assets: visible})
+                });
+                if (wasCollapsed) fetchAll();
+            } catch(e) {}
+        });
+    });
+
+    grid.querySelectorAll('.building-header').forEach(el => {
+        el.addEventListener('click', async function(e) {
+            if (e.target.closest('.data-entry-link') || e.target.closest('.source-group') || e.target.closest('.source-btn')) return;
+            const wasCollapsed = this.classList.contains('collapsed');
+            const bName = this.dataset.building;
+            const condoGroup = this.closest('.condo-group');
+            if (wasCollapsed) {
+                // Accordion: close other buildings in same condo
+                condoGroup.querySelectorAll('.building-header').forEach(function(bh) {
+                    if (bh.dataset.building !== bName) {
+                        bh.classList.add('collapsed');
+                        var bl = bh.dataset.building;
+                        if (bl) _expandedBuildings.delete(bl);
+                    }
+                });
+                _expandedBuildings.add(bName);
+            } else {
+                _expandedBuildings.delete(bName);
+            }
+            this.classList.toggle('collapsed');
+            const visible = computeVisibleAssets();
+            try {
+                await fetch('/api/set-visible', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({assets: visible})
+                });
+                if (wasCollapsed) fetchAll();
+            } catch(e) {}
+        });
+    });
+}
+
+function computeVisibleAssets() {
+    const visible = [];
+    document.querySelectorAll('.building-group').forEach(g => {
+        const condoGroup = g.closest('.condo-group');
+        if (condoGroup && condoGroup.classList.contains('collapsed')) return;
+        if (!g.querySelector('.building-header.collapsed')) {
+            g.querySelectorAll('.card').forEach(c => {
+                if (c.dataset.asset) visible.push(c.dataset.asset);
+            });
+        }
+    });
+    return visible;
 }
 
 function updateCard(asset, data) {
@@ -248,41 +407,114 @@ function updateCard(asset, data) {
     if (!card) return;
     const info = STATUS_MAP[data.status] || STATUS_MAP.low;
     const badge = document.getElementById(`badge-${asset}`);
-    badge.className = `badge ${info.cls}`;
-    badge.textContent = info.label;
-    card.style.borderColor = data.status === 'high' ? '#dc2626' : data.status === 'medium' ? '#ca8a04' : '';
+    if (badge.textContent !== info.label) {
+        badge.className = `badge ${info.cls}`;
+        badge.textContent = info.label;
+        card.style.borderColor = data.status === 'high' ? '#dc2626' : data.status === 'medium' ? '#ca8a04' : '';
+    }
 
-    buildSensorGrid(asset, data);
+    // Update source buttons and links inside the card
+    const sourceFromClient = _clientSourceModes[asset];
+    const isReal = sourceFromClient ? sourceFromClient === 'real' : data.data_source === 'real';
+    const simActive = !isReal ? 'active-sim' : '';
+    const realActive = isReal ? 'active-real' : '';
+    const sourceGroup = card.querySelector('.source-group');
+    if (sourceGroup) {
+        const simBtn = sourceGroup.querySelector('[onclick*="simulated"]');
+        const realBtn = sourceGroup.querySelector('[onclick*="real"]');
+        if (simBtn) simBtn.className = 'source-btn ' + simActive;
+        if (realBtn) realBtn.className = 'source-btn ' + realActive;
+    }
+    // Ensure data entry links exist
+    if (!card.querySelector('.data-entry-link')) {
+        const container = card.querySelector('[style*="display:flex"]') || card.querySelector('.card-header');
+        if (container) {
+            container.insertAdjacentHTML('beforeend',
+                `<a href="/sensor-input?asset=${asset}" class="data-entry-link" onclick="event.stopPropagation()">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    Ingresar datos
+                </a>
+                <a href="/asset?id=${data.id}" class="data-entry-link" onclick="event.stopPropagation()">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+                    Ficha Técnica
+                </a>`);
+        }
+    }
 
-    document.getElementById(`${asset}-score-val`).textContent = data.score;
-    document.getElementById(`${asset}-score-val`).style.color = info.color;
-    const bar = document.getElementById(`${asset}-score-bar`);
-    bar.style.width = `${Math.min(data.score, 100)}%`;
-    bar.style.background = info.color;
+    buildSensorRows(asset, data);
 
     const ex = document.getElementById(`explain-${asset}`);
-    if (ex) ex.innerHTML = `<strong>Diagnóstico:</strong> ${data.explanation || 'Evaluando...'}`;
+    if (ex) {
+        var newEx = `<span class="ex-label">Diagnostico</span>${data.explanation || 'Evaluando...'}${data.recommendations && data.recommendations.length ? '<div class="recs-inline">' + data.recommendations.slice(0,2).map(r => '<span class="rec-item">&rsaquo; ' + r + '</span>').join('') + '</div>' : ''}`;
+        if (ex.innerHTML !== newEx) ex.innerHTML = newEx;
+    }
 
-    if (charts[asset]) {
-        const ch = charts[asset];
-        if (ch.data.labels.length > 30) {
-            ch.data.labels.shift();
-            ch.data.datasets[0].data.shift();
+    var prevChartMode = _chartModes[asset];
+
+    // Handle chart mode transitions
+    if (isReal && prevChartMode !== 'real') {
+        if (charts[asset]) { charts[asset].destroy(); delete charts[asset]; }
+        _chartModes[asset] = 'real';
+        if (historyData[asset] && historyData[asset].length > 0) {
+            buildRealChart(asset, historyData[asset]);
+        } else {
+            fetch('/api/history/' + asset).then(function(r){return r.json()}).then(function(h){
+                historyData[asset] = h;
+                if (h.length > 0) buildRealChart(asset, h);
+            }).catch(function(){});
         }
-        ch.data.labels.push('');
-        ch.data.datasets[0].data.push(data.score);
-        ch.update('none');
+    } else if (!isReal && prevChartMode === 'real') {
+        if (charts[asset]) { charts[asset].destroy(); delete charts[asset]; }
+        delete _chartModes[asset];
+        charts[asset] = createChart(asset);
+        if (charts[asset] && data.score != null) {
+            charts[asset].data.labels = [''];
+            charts[asset].data.datasets[0].data = [data.score];
+            try { charts[asset].update('none'); } catch(e) {}
+        }
+    } else if (charts[asset] && !isReal) {
+        var ch = charts[asset];
+        var lastVal = ch.data.datasets[0].data.length > 0 ? ch.data.datasets[0].data[ch.data.datasets[0].data.length - 1] : null;
+        if (lastVal !== data.score) {
+            if (ch.data.labels.length > 30) {
+                ch.data.labels.shift();
+                ch.data.datasets[0].data.shift();
+            }
+            ch.data.labels.push('');
+            ch.data.datasets[0].data.push(data.score);
+            try { ch.update('none'); } catch(e) {}
+        }
+    }
+
+    const wrap = document.getElementById(`chart-wrap-${asset}`);
+    if (wrap) {
+        wrap.classList.toggle('real-chart', isReal);
+    }
+
+    // Only update score bar/value if changed
+    const scoreVal = document.getElementById(`${asset}-score-val`);
+    const scoreBar = document.getElementById(`${asset}-score-bar`);
+    if (scoreVal && parseInt(scoreVal.textContent) !== Math.round(data.score)) {
+        scoreVal.textContent = data.score;
+        scoreVal.style.color = info.color;
+        scoreBar.style.width = `${Math.min(data.score, 100)}%`;
+        scoreBar.style.background = info.color;
     }
 
     const prevStatus = prevStatuses[asset];
-    if (prevStatus && data.status === 'high' && STATUS_ORDER[data.status] > STATUS_ORDER[prevStatus]) {
-        const now = Date.now();
-        if (!alertCooldowns[asset] || now - alertCooldowns[asset] > 30000) {
-            alertCooldowns[asset] = now;
-            showAlertModal(asset, data.name || asset, data.status, data.score, data.explanation);
+    prevStatuses[asset] = data.status;
+
+    if (prevStatus && prevStatus !== data.status) {
+        if (data.status === 'high') {
+            playAlert('high');
+            showToast(`🔴 ${data.label || asset}: estado CRÍTICO`, 'warning');
+            _showBrowserNotif('Alerta Crítica', `${data.label || asset} cambió a ROJO`, 'alert-' + asset);
+        } else if (data.status === 'medium') {
+            playAlert('medium');
+            showToast(`🟡 ${data.label || asset}: estado de atención`, 'warning');
+            _showBrowserNotif('Alerta', `${data.label || asset} cambió a AMARILLO`, 'alert-' + asset);
         }
     }
-    prevStatuses[asset] = data.status;
 }
 
 function updateSummary(data) {
@@ -305,82 +537,6 @@ function selectAsset(asset) {
         if (el.dataset && el.dataset.asset === asset) el.classList.add('selected');
         else el.classList.remove('selected');
     });
-    if (dataCache[asset]) {
-        updateRecs(dataCache[asset]);
-        updateActuators(dataCache[asset]);
-    }
-}
-
-function updateActuators(data) {
-    const list = document.getElementById('act-list');
-    const nameEl = document.getElementById('act-asset');
-    if (!data || !data.actuators || data.actuators.length === 0) {
-        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin actuadores</div>';
-        nameEl.textContent = '--';
-        return;
-    }
-    nameEl.textContent = data.name || '';
-    list.innerHTML = data.actuators.map(a => {
-        const isActive = a.state;
-        const color = isActive ? '#22c55e' : '#64748b';
-        const bg = isActive ? '#14532d' : '#1e293b';
-        const val = a.unit ? `${a.value}${a.unit}` : (isActive ? 'ON' : 'OFF');
-        return `<div class="rec-item" style="align-items:center;">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};"></span>
-            <span style="flex:1;color:var(--text-muted);font-size:0.75rem;">${a.label}</span>
-            <span style="background:${bg};color:${color};padding:0.15rem 0.5rem;border-radius:4px;font-size:0.7rem;font-weight:600;">${val}</span>
-            ${a.auto ? '<span style="font-size:0.6rem;color:#64748b;margin-left:0.3rem;">AUTO</span>' : ''}
-        </div>`;
-    }).join('');
-}
-
-function updateRecs(data) {
-    const list = document.getElementById('rec-list');
-    const nameEl = document.getElementById('rec-asset');
-    if (!data || !data.recommendations || data.recommendations.length === 0) {
-        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin recomendaciones</div>';
-        nameEl.textContent = '--';
-        return;
-    }
-    nameEl.textContent = data.name || '';
-    list.innerHTML = data.recommendations.map(r =>
-        `<div class="rec-item"><span class="bullet">></span> ${r}</div>`
-    ).join('');
-}
-
-function updateEvents(events) {
-    const list = document.getElementById('event-list');
-    const count = document.getElementById('event-count');
-    count.textContent = events.length;
-    if (events.length === 0) {
-        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin eventos</div>';
-        return;
-    }
-    const STATUS_TRANSLATE = { 'low': 'VERDE', 'medium': 'AMARILLO', 'high': 'ROJO', 'none': 'NORMAL', '': '—' };
-    list.innerHTML = events.slice(-20).reverse().map(e => {
-        const fromLabel = STATUS_TRANSLATE[e.from] || e.from;
-        const toLabel = STATUS_TRANSLATE[e.to] || e.to;
-        const label = e.to === 'fault_sim' ? '⚠ SIMULACIÓN' : `${fromLabel} → ${toLabel}`;
-        const type = e.to === 'fault_sim' ? 'badge-warning' : e.type === 'warning' ? 'badge-medium' : 'badge-low';
-        return `<div class="event-item"><span class="event-time">${e.time}</span><span class="badge ${type}">${label}</span><span>${e.asset_name}</span></div>`;
-    }).join('');
-}
-
-function updateActions(actions) {
-    const list = document.getElementById('action-list');
-    const count = document.getElementById('action-count');
-    count.textContent = actions.length;
-    if (actions.length === 0) {
-        list.innerHTML = '<div style="color:#64748b;font-size:0.8rem;text-align:center;padding:1rem;">Sin acciones</div>';
-        return;
-    }
-    list.innerHTML = actions.slice(0, 20).map(a =>
-        `<div class="action-item">
-            <span class="action-time">${a.time || ''}</span>
-            <span class="action-actuator">${a.actuator_label || a.actuator || ''}</span>
-            <span style="flex:1;color:var(--text-muted);">${a.rule_description || a.description || ''}</span>
-        </div>`
-    ).join('');
 }
 
 async function setScenario(asset, scenario) {
@@ -393,113 +549,235 @@ async function setScenario(asset, scenario) {
 }
 
 async function fetchAll() {
-    try {
-        const [dr, er, ar] = await Promise.all([
-            fetch('/api/data'),
-            fetch('/api/events'),
-            fetch('/api/actions?limit=20')
-        ]);
-        const data = await dr.json();
-        const events = await er.json();
-        const actions = await ar.json();
-        dataCache = data;
-
-        if (events.length > lastEvents && lastEvents > 0) {
-            const newEvents = events.slice(0, events.length - lastEvents);
-            const criticalAlerts = newEvents.filter(e => e.type === 'warning' && e.to === 'high');
-            criticalAlerts.slice(-2).forEach(e => {
-                showToast(`${e.asset_name}: ${e.from} → ${e.to}`, 'warning');
-            });
-        }
-        lastEvents = events.length;
-
-        const keys = Object.keys(data).filter(k => data[k] && data[k].sensors);
-        if (assetKeys.length === 0 || JSON.stringify(keys) !== JSON.stringify(assetKeys)) {
-            renderCards(data);
-            initCharts(data);
-        } else {
-            for (const asset of keys) {
-                if (data[asset]) updateCard(asset, data[asset]);
+    if (!navigator.onLine) { showOfflineDashboard(); return; }
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 8000);
+    const fetchStarted = Date.now();
+    const r = await fetch('/api/data', { signal: ac.signal }).catch(() => null);
+    clearTimeout(to);
+    if (fetchStarted < _sourceToggleAt) return;
+    if (r && r.ok) {
+        try {
+            const data = await r.json();
+            dataCache = data;
+            const keys = Object.keys(data).filter(k => data[k] && data[k].sensors);
+            if (keys.length === 0) {
+                setTs('Expande un condominio para ver datos');
+                return;
             }
-        }
+            if (!_initialRenderDone) {
+                renderCards(data);
+                initCharts(data);
+                _initialRenderDone = true;
+            } else {
+                for (const asset of keys) {
+                    if (data[asset]) {
+                        const card = document.getElementById(`card-${asset}`);
+                        if (card && (card.closest('.condo-group')?.classList.contains('collapsed') || card.closest('.building-group')?.querySelector('.building-header.collapsed'))) continue;
+                        updateCard(asset, data[asset]);
+                    }
+                }
+            }
+            updateSummary(data);
+            if (selectedAsset && data[selectedAsset]) {
+            } else if (keys.length > 0) {
+                selectAsset(keys[0]);
+            }
+            setTs('Actualizado: ' + new Date().toLocaleTimeString());
+        } catch(e) {}
+    }
+}
 
-        updateSummary(data);
-
-        if (selectedAsset && data[selectedAsset]) {
-            updateRecs(data[selectedAsset]);
-            updateActuators(data[selectedAsset]);
-        } else if (keys.length > 0) {
-            selectAsset(keys[0]);
-        }
-
-        updateEvents(events);
-        updateActions(actions);
-        document.getElementById('timestamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
-    } catch(e) {}
+function setTs(msg) {
+    const el = document.getElementById('timestamp');
+    if (el) { el.textContent = msg; el.style.visibility = 'visible'; }
 }
 
 async function fetchHistory() {
-    for (const asset of assetKeys) {
+    const realAssets = assetKeys.filter(a => {
+        const mode = _clientSourceModes[a] || (dataCache[a] && dataCache[a].data_source) || 'simulated';
+        return mode === 'real';
+    });
+    const targets = realAssets.length > 0 ? realAssets : assetKeys.slice(0, 5);
+    for (let i = 0; i < targets.length; i++) {
+        const asset = targets[i];
+        if (i > 0) await new Promise(r => setTimeout(r, 300));
         try {
             const r = await fetch(`/api/history/${asset}`);
             historyData[asset] = await r.json();
-            if (historyData[asset].length > 0 && charts[asset]) {
-                const ch = charts[asset];
-                ch.data.labels = historyData[asset].map(() => '');
-                ch.data.datasets[0].data = historyData[asset].map(d => d.score);
-                ch.update('none');
+            const mode = _clientSourceModes[asset] || (dataCache[asset] && dataCache[asset].data_source) || 'simulated';
+            if (mode === 'real') {
+                if (_chartModes[asset] !== 'real') {
+                    if (charts[asset]) { charts[asset].destroy(); delete charts[asset]; }
+                    _chartModes[asset] = 'real';
+                }
+                if (historyData[asset].length > 0) {
+                    if (!charts[asset]) buildRealChart(asset, historyData[asset]);
+                    else if (_chartModes[asset] === 'real') {
+                        const ch = charts[asset];
+                        const sensors = _collectSensorNames(historyData[asset]);
+                        const times = historyData[asset].map(d => d.time);
+                        ch.data.labels = times;
+                        sensors.forEach((sname, si) => {
+                            if (!ch.data.datasets[si]) {
+                                const colors = ['#3b82f6','#22c55e','#ca8a04','#dc2626','#a855f7','#ec4899','#14b8a6','#f97316'];
+                                ch.data.datasets[si] = {
+                                    label: sname,
+                                    data: [],
+                                    borderColor: colors[si % colors.length],
+                                    backgroundColor: colors[si % colors.length] + '22',
+                                    borderWidth: 1.5,
+                                    pointRadius: 1,
+                                    tension: 0.3,
+                                    fill: false,
+                                };
+                            }
+                            ch.data.datasets[si].data = historyData[asset].map(d => (d.sensors && d.sensors[sname] != null) ? d.sensors[sname] : null);
+                        });
+                        ch.update('none');
+                    }
+                }
+            } else {
+                if (_chartModes[asset] === 'real') {
+                    if (charts[asset]) { charts[asset].destroy(); delete charts[asset]; }
+                    delete _chartModes[asset];
+                    charts[asset] = createChart(asset);
+                }
+                if (historyData[asset].length > 0 && charts[asset]) {
+                    const ch = charts[asset];
+                    if (!ch._seeded) {
+                        const h = historyData[asset].slice().reverse();
+                        ch.data.labels = h.map(() => '');
+                        ch.data.datasets[0].data = h.map(d => d.score);
+                        ch._seeded = true;
+                    }
+                    ch.update('none');
+                }
             }
         } catch(e) {}
     }
 }
 
-function createChart(asset) {
-    const canvas = document.getElementById(`chart-${asset}`);
-    if (!canvas) return null;
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    const textColor = isDark ? '#94a3b8' : '#64748b';
-    const gridColor = isDark ? '#334155' : '#e2e8f0';
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#3b82f6',
-                backgroundColor: (ctx) => {
-                    if (!ctx.chart.chartArea) return 'transparent';
-                    const g = ctx.chart.ctx.createLinearGradient(0, ctx.chart.chartArea.top, 0, ctx.chart.chartArea.bottom);
-                    g.addColorStop(0, 'rgba(59,130,246,0.3)');
-                    g.addColorStop(1, 'rgba(59,130,246,0)');
-                    return g;
+function _collectSensorNames(batches) {
+    const names = new Set();
+    (batches || []).forEach(b => { if (b.sensors) Object.keys(b.sensors).forEach(k => names.add(k)); });
+    return Array.from(names);
+}
+
+function buildRealChart(asset, data) {
+    try {
+        const canvas = document.getElementById(`chart-${asset}`);
+        if (!canvas) return;
+        if (typeof Chart === 'undefined') { console.warn('Chart.js no disponible'); return; }
+        if (charts[asset] && charts[asset].destroy) { charts[asset].destroy(); delete charts[asset]; }
+        const times = (data || []).map(d => d.time);
+        const sensors = _collectSensorNames(data);
+        const colors = ['#3b82f6','#22c55e','#ca8a04','#dc2626','#a855f7','#ec4899','#14b8a6','#f97316'];
+        const datasets = sensors.map((sname, i) => ({
+            label: sname,
+            data: (data || []).map(d => (d.sensors && d.sensors[sname] != null) ? d.sensors[sname] : null),
+            borderColor: colors[i % colors.length],
+            backgroundColor: colors[i % colors.length] + '22',
+            borderWidth: 1.5,
+            pointRadius: 1,
+            tension: 0.3,
+            fill: false,
+        }));
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+        const chart = new Chart(canvas, {
+            type: 'line',
+            data: { labels: times, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'bottom', labels: { boxWidth: 8, font: { size: 8 }, color: textColor, padding: 8 } },
+                    tooltip: {
+                        enabled: true,
+                        mode: 'index',
+                        intersect: false,
+                        bodyFont: { size: 10 },
+                        titleFont: { size: 10 },
+                    }
                 },
-                fill: true,
-                tension: 0.3,
-                pointRadius: 0,
-                borderWidth: 2,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: {
-                x: { display: false, grid: { display: false } },
-                y: { display: false, min: 0, max: 100, grid: { display: false } }
+                scales: {
+                    x: { display: true, ticks: { maxTicksLimit: 6, font: { size: 8 }, color: textColor }, grid: { color: gridColor } },
+                    y: { display: true, beginAtZero: true, ticks: { font: { size: 8 }, color: textColor }, grid: { color: gridColor } },
+                },
+                animation: false,
+                transitions: { active: { animation: { duration: 0 } } },
+            }
+        });
+        charts[asset] = chart;
+        _chartModes[asset] = 'real';
+    } catch(e) { console.warn('buildRealChart error for', asset, e); }
+}
+
+function createChart(asset) {
+    try {
+        const canvas = document.getElementById(`chart-${asset}`);
+        if (!canvas) return null;
+        if (typeof Chart === 'undefined') { console.warn('Chart.js no disponible'); return null; }
+        return new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.08)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                }]
             },
-            animation: { duration: 300 },
-        }
-    });
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: {
+                    x: { display: false, grid: { display: false } },
+                    y: { display: false, min: 0, max: 100, grid: { display: false } }
+                },
+                animation: false,
+                transitions: { active: { animation: { duration: 0 } } },
+                elements: { line: { tension: 0.3 } },
+            }
+        });
+    } catch(e) { console.warn('createChart error for', asset, e); return null; }
 }
 
 function initCharts(data) {
+    if (typeof Chart === 'undefined') { console.warn('Chart.js no cargado'); return; }
     for (const asset of assetKeys) {
-        if (charts[asset]) {
-            charts[asset].destroy();
-            delete charts[asset];
-        }
-        charts[asset] = createChart(asset);
+        try {
+            const mode = _clientSourceModes[asset] || (data[asset] && data[asset].data_source) || 'simulated';
+            if (charts[asset] && charts[asset].destroy) {
+                charts[asset].destroy();
+                delete charts[asset];
+            }
+            delete _chartModes[asset];
+            if (mode !== 'real') {
+                charts[asset] = createChart(asset);
+                if (charts[asset] && data[asset] && data[asset].score != null) {
+                    charts[asset].data.labels = [''];
+                    charts[asset].data.datasets[0].data = [data[asset].score];
+                    charts[asset].update('none');
+                }
+            } else if (historyData[asset] && historyData[asset].length > 0) {
+                buildRealChart(asset, historyData[asset]);
+            }
+        } catch(e) { console.warn('initCharts error for', asset, e); }
     }
+}
+
+function _keysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    var s = new Set(a);
+    return b.every(function(k) { return s.has(k); });
 }
 
 function startWebSocket() {
@@ -513,25 +791,27 @@ function startWebSocket() {
             const data = JSON.parse(event.data);
             dataCache = data;
             const keys = Object.keys(data).filter(k => data[k] && data[k].sensors);
-            if (assetKeys.length === 0 || JSON.stringify(keys) !== JSON.stringify(assetKeys)) {
+            if (assetKeys.length === 0 || !_keysEqual(keys, assetKeys)) {
                 renderCards(data);
                 initCharts(data);
-            } else {
+        } else {
                 for (const asset of keys) {
-                    if (data[asset]) updateCard(asset, data[asset]);
+                    if (data[asset]) {
+                        const card = document.getElementById(`card-${asset}`);
+                        if (card && (card.closest('.condo-group')?.classList.contains('collapsed') || card.closest('.building-group')?.querySelector('.building-header.collapsed'))) continue;
+                        updateCard(asset, data[asset]);
+                    }
                 }
             }
             updateSummary(data);
             if (selectedAsset && data[selectedAsset]) {
-                updateRecs(data[selectedAsset]);
-                updateActuators(data[selectedAsset]);
             } else if (keys.length > 0) {
                 selectAsset(keys[0]);
             }
             document.getElementById('timestamp').textContent = 'Actualizado: ' + new Date().toLocaleTimeString();
         } catch(e) {}
     };
-
+    
     ws.onclose = function() {
         ws = null;
         if (wsFallbackTimer) clearTimeout(wsFallbackTimer);
@@ -626,6 +906,56 @@ async function applySimulation() {
     showToast(`Simulación aplicada: ${asset}`, 'success');
 }
 
+let _sourceToggleAt = 0;
+let _clientSourceModes = {};
+
+async function toggleSource(asset, mode) {
+    try {
+        _sourceToggleAt = Date.now();
+        const prevMode = _clientSourceModes[asset];
+        _clientSourceModes[asset] = mode;
+        await fetch(`/api/source-mode/${asset}?mode=${mode}`, { method: 'POST' });
+        const fresh = await (await fetch('/api/data')).json();
+        if (_clientSourceModes[asset] === mode) {
+            dataCache = fresh;
+            // Update just this card instead of full re-render
+            if (document.getElementById(`card-${asset}`)) {
+                updateCard(asset, dataCache[asset]);
+            }
+        }
+        // Handle chart for this asset
+        if (prevMode !== mode) {
+            if (charts[asset] && charts[asset].destroy) {
+                charts[asset].destroy();
+                delete charts[asset];
+            }
+            delete _chartModes[asset];
+            if (mode === 'real') {
+                if (!historyData[asset]) {
+                    const r = await fetch(`/api/history/${asset}`);
+                    historyData[asset] = await r.json();
+                }
+                if (historyData[asset] && historyData[asset].length > 0) {
+                    buildRealChart(asset, historyData[asset]);
+                }
+            } else {
+                charts[asset] = createChart(asset);
+                if (charts[asset] && dataCache[asset] && dataCache[asset].score != null) {
+                    charts[asset].data.labels = [''];
+                    charts[asset].data.datasets[0].data = [dataCache[asset].score];
+                    charts[asset].update('none');
+                }
+            }
+        }
+        showToast(`${asset}: ${mode === 'real' ? 'Datos reales' : 'Simulación'}`, 'info');
+    } catch(e) {
+        showToast(`Error al cambiar fuente: ${e}`, 'warning');
+    }
+}
+
+
+let _chartModes = {};
+
 window.onSimDrawerOpen = function() {
     populateSimDrawer();
 };
@@ -643,9 +973,19 @@ async function triggerRandomFault() {
 }
 
 initCharts({});
-pollingInterval = setInterval(fetchAll, 2000);
+_requestNotifPerm();
+pollingInterval = setInterval(fetchAll, 3000);
 startWebSocket();
-setInterval(fetchHistory, 5000);
+setInterval(fetchHistory, 10000);
+
+window.addEventListener('online', () => {
+    document.getElementById('timestamp').textContent = 'Reconectando...';
+    fetchAll();
+    startWebSocket();
+});
+window.addEventListener('offline', () => showOfflineDashboard());
+
+if (!navigator.onLine) showOfflineDashboard();
 fetchAll();
 fetchHistory();
 </script>

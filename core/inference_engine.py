@@ -80,11 +80,9 @@ class InferenceEngine:
                         consequent[term] = fuzz.trapmf(consequent.universe, p[:4])
                 else:
                     defaults = {
-                        "none": fuzz.trimf(consequent.universe, [0, 0, 20]),
                         "low": fuzz.trimf(consequent.universe, [0, 0, 30]),
                         "medium": fuzz.trimf(consequent.universe, [20, 50, 80]),
-                        "high": fuzz.trimf(consequent.universe, [60, 85, 100]),
-                        "critical": fuzz.trimf(consequent.universe, [85, 100, 100]),
+                        "high": fuzz.trimf(consequent.universe, [60, 100, 100]),
                     }
                     if term in defaults:
                         consequent[term] = defaults[term]
@@ -149,11 +147,10 @@ class InferenceEngine:
 
     def get_status(self, score, output_max=100):
         """Convert a numeric score to a 3-state traffic light status.
-
-        Thresholds (as percentage of output_max):
-        - Rojo (high): >= 60
-        - Amarillo (medium): >= 30
-        - Verde (low): < 30
+        Umbrales según especificación (RF-09):
+        - Rojo (high):    60-100  → Crítico
+        - Amarillo (medium): 30-59  → Precaución
+        - Verde (low):      0-29   → Normal
         """
         pct = (score / output_max) * 100 if output_max > 0 else score
         if pct >= 60:
@@ -214,6 +211,11 @@ class InferenceEngine:
 
         results.sort(key=lambda x: x["fire_strength"], reverse=True)
         return results
+
+    def clear_cache(self):
+        """Clear the per-asset inference system cache.
+        Must be called after modifying rules, sensors, or membership functions."""
+        self._cache.clear()
 
     def _rule_desc(self, rule):
         """Generate a human-readable description of a rule."""

@@ -1,20 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .config-layout { display: grid; grid-template-columns: 260px 1fr 280px; gap: 1rem; }
-    .sidebar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; }
-    .sidebar h3 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
-    .asset-item { padding: 0.45rem 0.65rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: all 0.15s; }
-    .asset-item:hover { background: var(--bg-body); }
-    .asset-item.active { background: var(--bg-body); border-color: var(--accent); color: #93c5fd; }
+    .path-bar { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; }
+    .path-bar select { font-size: 0.78rem; padding: 0.25rem 0.5rem; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text); min-width: 120px; max-width: 180px; }
+    .path-bar .sep { color: var(--text-dim); font-size: 0.75rem; }
+    .path-bar .path-text { color: var(--text-dim); font-size: 0.78rem; margin-left: 0.25rem; white-space: nowrap; }
+    .path-bar .actions { margin-left: auto; display: flex; gap: 0.3rem; flex-shrink: 0; }
+    .path-bar .btn-icon { padding: 0.25rem 0.5rem; font-size: 0.7rem; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-muted); cursor: pointer; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; gap: 0.2rem; }
+    .path-bar .btn-icon:hover { border-color: var(--accent); color: var(--text); }
     .main-area { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
-    .help-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem; font-size: 0.78rem; }
-    .help-panel h4 { font-size: 0.8rem; color: #93c5fd; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
-    .help-panel p { color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.5; }
-    .help-panel .tip { background: var(--bg-body); border-radius: 6px; padding: 0.5rem; margin-bottom: 0.4rem; border-left: 3px solid var(--accent); }
-    .help-panel .tip strong { color: var(--text); display: block; margin-bottom: 0.15rem; }
-    .help-panel .tip span { color: var(--text-muted); font-size: 0.73rem; }
-    .help-panel code { background: var(--bg-body); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.72rem; color: #f59e0b; }
     .tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
     .tabs button { padding: 0.5rem 1rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer; font-size: 0.82rem; border-bottom: 2px solid transparent; transition: all 0.15s; }
     .tabs button:hover { color: var(--text); }
@@ -54,139 +48,139 @@
     .preset-btn { padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-body); color: var(--text-muted); cursor: pointer; font-size: 0.68rem; margin: 0.1rem; }
     .preset-btn:hover { border-color: var(--accent); color: var(--text); }
     .preset-btn.active { border-color: #22c55e; color: #bbf7d0; }
+    .hierarchy-item { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.78rem; }
+    .hierarchy-item:hover { background: var(--bg-body); }
+    .hierarchy-item .h-name { flex: 1; }
+    .hierarchy-item .h-actions { display: flex; gap: 0.2rem; opacity: 0; transition: opacity 0.15s; }
+    .hierarchy-item:hover .h-actions { opacity: 1; }
+    .hierarchy-item .h-actions button { padding: 0.1rem 0.3rem; font-size: 0.6rem; border-radius: 3px; border: none; cursor: pointer; background: transparent; color: var(--text-dim); }
+    .hierarchy-item .h-actions button:hover { color: var(--text); }
+    .hierarchy-item .h-actions .h-del:hover { color: #dc2626; }
+    .help-box { background: var(--bg-body); border-radius: 8px; padding: 0.6rem; margin-top: 0.75rem; font-size: 0.72rem; color: var(--text-muted); border-left: 3px solid var(--accent); display: none; }
+    .help-box.show { display: block; }
+    .help-box p { margin-bottom: 0.3rem; }
+    .help-box code { background: var(--bg-card); padding: 0.05rem 0.25rem; border-radius: 3px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 400px; max-width: 90%; max-height: 85vh; overflow-y: auto; }
+    .modal h3 { font-size: 0.95rem; margin-bottom: 0.75rem; }
+    .modal .form-group { margin-bottom: 0.75rem; }
+    .modal .form-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .modal .form-group input, .modal .form-group select { width: 100%; padding: 0.5rem; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.85rem; }
+    .modal .btn-row { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 </style>
 
-<div class="config-layout">
-    <div class="sidebar">
-        <h3>Activos del Condominio</h3>
-        <div class="asset-list" id="assetList"></div>
-        <button class="btn btn-sm btn-primary" style="width:100%;margin-top:0.5rem;" onclick="showAddAssetModal()">+ Nuevo Activo</button>
-        <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid #334155;">
-            <h3 style="margin-bottom:0.3rem;">Leyenda de Estados</h3>
-            <div style="font-size:0.72rem;color:#94a3b8;">
-                <div><span class="status-dot" style="background:#22c55e;"></span>Normal / Bajo</div>
-                <div><span class="status-dot" style="background:#f59e0b;"></span>Medio - Requiere atención</div>
-                <div><span class="status-dot" style="background:#dc2626;"></span>Alto - Urgente</div>
-                <div><span class="status-dot" style="background:#8b5cf6;"></span>Crítico - Acción inmediata</div>
-            </div>
-        </div>
+<div class="path-bar" id="pathBar">
+    <i class="fas fa-building" style="font-size:0.75rem;color:var(--text-muted);"></i>
+    <select id="selCondo" onchange="onCondoChange()"><option value="">Condominio</option></select>
+    <span class="sep">→</span>
+    <select id="selAsset" onchange="onAssetChange()" disabled><option value="">Activo</option></select>
+    <span id="assetPath" class="path-text"></span>
+    <div class="actions">
+        <a href="/config/hierarchy" class="btn-icon" title="Gestionar condominios, edificios y salas"><i class="fas fa-sitemap"></i> Gestionar</a>
+        <a href="/config/assets" class="btn-icon" title="Agregar nuevo activo"><i class="fas fa-plus-circle"></i> Activo</a>
+        <a href="/config/users" class="btn-icon" title="Gestionar usuarios"><i class="fas fa-users"></i> Usuarios</a>
+        <button class="btn-icon" onclick="toggleHelp()" title="Ayuda"><i class="fas fa-question-circle"></i></button>
+    </div>
+</div>
+
+<div class="main-area">
+    <div style="margin-bottom:1rem;">
+        <h2 style="font-size:1.1rem;margin-bottom:0.25rem;" id="pageTitle">Configure el Sistema Experto</h2>
+        <p style="font-size:0.78rem;color:#94a3b8;" id="pageSubtitle">Seleccione un activo para ver y editar sus reglas, sensores y funciones de pertenencia.</p>
     </div>
 
-    <div class="main-area">
-        <div style="margin-bottom:1rem;">
-            <h2 style="font-size:1.1rem;margin-bottom:0.25rem;" id="pageTitle">Configure el Sistema Experto</h2>
-            <p style="font-size:0.78rem;color:#94a3b8;" id="pageSubtitle">Seleccione un activo para ver y editar sus reglas, sensores y funciones de membresía.</p>
+    <div class="tabs">
+        <button class="active" data-tab="rules" onclick="switchTab('rules')">Reglas</button>
+        <button data-tab="sensors" onclick="switchTab('sensors')">Sensores</button>
+        <button data-tab="membership" onclick="switchTab('membership')">Pertenencia</button>
+        <button data-tab="export" onclick="switchTab('export')">Exportar</button>
+    </div>
+
+    <div class="tab-content active" id="tab-rules">
+        <div class="section-title">Reglas del Sistema Experto</div>
+        <div class="section-desc">
+            Las reglas usan el formato <strong>SI condición ENTONCES conclusión</strong>.
+            Las condiciones se evalúan sobre los sensores y la conclusión determina el nivel de alerta.
+            Puede combinar condiciones con <strong>Y</strong> (todas deben cumplirse) u <strong>O</strong> (cualquiera que se cumpla).
         </div>
 
-        <div class="tabs">
-            <button class="active" data-tab="rules" onclick="switchTab('rules')">Reglas</button>
-            <button data-tab="sensors" onclick="switchTab('sensors')">Sensores</button>
-            <button data-tab="membership" onclick="switchTab('membership')">Membresía</button>
-            <button data-tab="export" onclick="switchTab('export')">Exportar</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+            <span style="font-size:0.8rem;color:#94a3b8;" id="ruleCount">0 reglas</span>
+            <button class="btn btn-sm btn-primary" onclick="showAddRuleModal()">+ Nueva Regla</button>
+        </div>
+        <div id="rulesList"><div class="empty-state">Seleccione un activo</div></div>
+    </div>
+
+    <div class="tab-content" id="tab-sensors">
+        <div class="section-title">Sensores del Activo</div>
+        <div class="section-desc">
+            Cada activo tiene sensores que miden diferentes variables. Cada sensor tiene <strong>funciones de pertenencia</strong>
+            que definen cómo clasificar sus valores (ej: "bajo", "medio", "alto").
         </div>
 
-        <div class="tab-content active" id="tab-rules">
-            <div class="section-title">Reglas del Sistema Experto</div>
-            <div class="section-desc">
-                Las reglas usan el formato <strong>SI condición ENTONCES conclusión</strong>.
-                Las condiciones se evalúan sobre los sensores y la conclusión determina el nivel de alerta.
-                Puede combinar condiciones con <strong>Y</strong> (todas deben cumplirse) u <strong>O</strong> (cualquiera que se cumpla).
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-                <span style="font-size:0.8rem;color:#94a3b8;" id="ruleCount">0 reglas</span>
-                <button class="btn btn-sm btn-primary" onclick="showAddRuleModal()">+ Nueva Regla</button>
-            </div>
-            <div id="rulesList"><div class="empty-state">Seleccione un activo de la lista</div></div>
-        </div>
-
-        <div class="tab-content" id="tab-sensors">
-            <div class="section-title">Sensores del Activo</div>
-            <div class="section-desc">
-                Cada activo tiene sensores que miden diferentes variables. Cada sensor tiene <strong>funciones de membresía</strong>
-                que definen cómo clasificar sus valores (ej: "bajo", "medio", "alto").
-            </div>
-
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-                <span style="font-size:0.8rem;color:#94a3b8;" id="sensorCount">0 sensores</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.4rem;">
+            <span style="font-size:0.8rem;color:#94a3b8;" id="sensorCount">0 sensores</span>
+            <div style="display:flex;gap:0.3rem;">
                 <button class="btn btn-sm btn-primary" onclick="showAddSensorModal()">+ Nuevo Sensor</button>
+                <button class="btn btn-sm" onclick="resetDefaults()" title="Restaurar sensores, reglas y funciones de pertenencia a los valores de fábrica"><i class="fas fa-undo-alt"></i> Restaurar Valores</button>
             </div>
-            <table class="table" id="sensorsTable">
-                <thead><tr><th>Nombre</th><th>Etiqueta</th><th>Unidad</th><th>Rango</th><th>Términos Difusos</th><th></th></tr></thead>
-                <tbody id="sensorsBody"></tbody>
-            </table>
+        </div>
+        <table class="table" id="sensorsTable">
+            <thead><tr><th>Nombre</th><th>Etiqueta</th><th>Unidad</th><th>Rango</th><th>Términos Difusos</th><th></th></tr></thead>
+            <tbody id="sensorsBody"></tbody>
+        </table>
+    </div>
+
+    <div class="tab-content" id="tab-membership">
+        <div class="section-title">Visualizador de Pertenencia</div>
+        <div class="section-desc">
+            Las <strong>funciones de pertenencia</strong> definen qué tan "bajo", "medio" o "alto" es un valor del sensor.
+            La gráfica muestra cómo se clasifica cada valor posible del sensor en los diferentes términos difusos.
+            Cada curva representa un término; donde se cruzan define la transición entre categorías.
         </div>
 
-        <div class="tab-content" id="tab-membership">
-            <div class="section-title">Visualizador de Membresía</div>
-            <div class="section-desc">
-                Las <strong>funciones de membresía</strong> definen qué tan "bajo", "medio" o "alto" es un valor del sensor.
-                La gráfica muestra cómo se clasifica cada valor posible del sensor en los diferentes términos difusos.
-                Cada curva representa un término; donde se cruzan define la transición entre categorías.
+        <div class="form-row" style="margin-bottom:0.75rem;">
+            <div class="form-group">
+                <label>Sensor a visualizar</label>
+                <select id="mfSensorSelect" onchange="renderMembership()"></select>
             </div>
-
-            <div class="form-row" style="margin-bottom:0.75rem;">
-                <div class="form-group">
-                    <label>Sensor a visualizar</label>
-                    <select id="mfSensorSelect" onchange="renderMembership()"></select>
+            <div class="form-group">
+                <label>Valor actual del sensor</label>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input type="number" id="mfTestValue" onchange="renderMembership()" style="max-width:120px;" step="0.1">
+                    <span style="font-size:0.72rem;color:#94a3b8;" id="mfTestUnit"></span>
+                    <span style="font-size:0.78rem;color:#3b82f6;font-weight:600;" id="mfTestResult"></span>
                 </div>
-                <div class="form-group">
-                    <label>Valor actual del sensor</label>
-                    <div style="display:flex;gap:0.5rem;align-items:center;">
-                        <input type="number" id="mfTestValue" onchange="renderMembership()" style="max-width:120px;" step="0.1">
-                        <span style="font-size:0.72rem;color:#94a3b8;" id="mfTestUnit"></span>
-                        <span style="font-size:0.78rem;color:#3b82f6;font-weight:600;" id="mfTestResult"></span>
-                    </div>
-                    <span class="hint">Ingrese un valor para ver a qué términos difusos pertenece</span>
-                </div>
+                <span class="hint">Ingrese un valor para ver a qué términos difusos pertenece</span>
             </div>
-            <div class="mf-canvas-wrap" id="mfChart">
-                <canvas id="mfCanvas"></canvas>
-                <div class="mf-legend" id="mfLegend"></div>
-            </div>
-            <div id="mfExplanation" style="margin-top:0.5rem;font-size:0.78rem;color:var(--text-muted);background:var(--bg-body);border-radius:6px;padding:0.6rem;"></div>
         </div>
+        <div class="mf-canvas-wrap" id="mfChart">
+            <canvas id="mfCanvas"></canvas>
+            <div class="mf-legend" id="mfLegend"></div>
+        </div>
+        <div id="mfExplanation" style="margin-top:0.5rem;font-size:0.78rem;color:var(--text-muted);background:var(--bg-body);border-radius:6px;padding:0.6rem;"></div>
+    </div>
 
-        <div class="tab-content" id="tab-export">
-            <div class="section-title">Exportar / Reportes</div>
-            <div class="section-desc">Descargue un reporte del estado actual del sistema o exporte la configuración completa.</div>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;">
-                <button class="btn btn-primary" onclick="window.open('/api/report','_blank')">Descargar Reporte de Estado</button>
-                <button class="btn" onclick="exportConfig()">Exportar Configuración (JSON)</button>
-                <button class="btn" onclick="window.open('/docs','_blank')">Documentación API (Swagger)</button>
-            </div>
+    <div class="tab-content" id="tab-export">
+        <div class="section-title">Exportar / Reportes</div>
+        <div class="section-desc">Descargue un reporte del estado actual del sistema o exporte la configuración completa.</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;">
+            <button class="btn btn-primary" onclick="window.open('/api/report','_blank')">Descargar Reporte de Estado</button>
+            <button class="btn" onclick="exportConfig()">Exportar Configuración (JSON)</button>
+            <button class="btn" onclick="window.open('/docs','_blank')">Documentación API (Swagger)</button>
         </div>
     </div>
 
-    <div class="help-panel" id="helpPanel">
-        <h4>Ayuda</h4>
-        <div id="helpContent">
-            <p>Bienvenido al panel de configuración del Sistema Experto.</p>
-            <div class="tip">
-                <strong>¿Qué es un Sistema Experto?</strong>
-                <span>Un programa que usa reglas del tipo "SI condición ENTONCES acción" para tomar decisiones, imitando el razonamiento de un experto humano.</span>
-            </div>
-            <div class="tip">
-                <strong>¿Qué es Lógica Difusa?</strong>
-                <span>En lugar de valores "sí/no" estrictos, usa grados de pertenencia (0 a 1). Por ejemplo, 37°C puede ser "normal" con 0.7 y "cálido" con 0.3 al mismo tiempo.</span>
-            </div>
-            <div class="tip">
-                <strong>Reglas</strong>
-                <span>Ej: <code>SI vibración=alta ENTONCES prioridad=crítica</code>. Las condiciones usan sensores y términos difusos. El consecuente es el nivel de alerta.</span>
-            </div>
-            <div class="tip">
-                <strong>Sensores</strong>
-                <span>Cada sensor tiene un rango (ej: 0-10) y términos difusos con funciones de membresía (trimf, trapmf). Los parámetros definen la forma de la curva.</span>
-            </div>
-            <div class="tip">
-                <strong>Funciones de Membresía</strong>
-                <span><code>trimf(a,b,c)</code> = triangular. <code>trapmf(a,b,c,d)</code> = trapezoidal. Parámetros definen puntos en el rango del sensor. Ej: trimf(0,0,4) = "bajo" de 0 a 4.</span>
-            </div>
-            <div class="tip">
-                <strong>Colores de estado</strong>
-                <span><span class="status-dot" style="background:#22c55e;"></span>Verde = Normal/Bajo · <span class="status-dot" style="background:#f59e0b;"></span>Amarillo = Medio · <span class="status-dot" style="background:#dc2626;"></span>Rojo = Alto · <span class="status-dot" style="background:#8b5cf6;"></span>Morado = Crítico</span>
-            </div>
-        </div>
+</div>
+
+<div class="help-box" id="helpBox">
+    <strong style="color:var(--text);">Ayuda rápida</strong>
+    <div id="helpContent">
+        <p><strong>Sistema Experto:</strong> Usa reglas "SI condición ENTONCES acción" para evaluar el estado de los activos.</p>
+        <p><strong>Lógica Difusa:</strong> Los valores pueden pertenecer parcialmente a múltiples categorías (bajo, medio, alto) simultáneamente.</p>
+        <p><strong>Reglas:</strong> <code>SI vibración=alta Y temperatura=caliente ENTONCES crítico</code></p>
+        <p><strong>Nomenclatura:</strong> Los activos se nombran automáticamente como <code>{tipo}_{condominio}_{{ '#' }}</code> ej: <code>bomba_san_miguel_3</code></p>
     </div>
 </div>
 
@@ -252,53 +246,20 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="assetModal">
-    <div class="modal" style="max-width:500px;">
-        <h3 id="assetModalTitle">Nuevo Activo</h3>
-        <div class="section-desc" style="margin-bottom:0.75rem;">
-            Un activo es un sistema del condominio que desea monitorear (ej: Ascensor, Sistema Eléctrico, Planta Eléctrica).
-        </div>
-        <input type="hidden" id="assetId" value="">
-        <div class="form-group">
-            <label>Nombre interno <span class="help-icon" title="Identificador único sin espacios (se usa en la URL y en las reglas)">?</span></label>
-            <input id="assetName" placeholder="Ej: generator, hvac, pump">
-            <span class="hint">Sin espacios, usar minúsculas y guiones bajos si es necesario</span>
-        </div>
-        <div class="form-group">
-            <label>Nombre visible <span class="help-icon" title="Nombre que se muestra en el dashboard">?</span></label>
-            <input id="assetLabel" placeholder="Ej: Generador Eléctrico, HVAC">
-        </div>
-        <div class="form-group">
-            <label>Descripción</label>
-            <input id="assetDesc" placeholder="Ej: Sistema de generación de emergencia">
-        </div>
-        <div class="form-group">
-            <label>Variable de salida <span class="help-icon" title="Nombre de la variable que representa el resultado de la evaluación difusa (ej: riesgo, prioridad, urgencia)">?</span></label>
-            <div class="form-row">
-                <div><label style="font-size:0.65rem;">Nombre interno</label><input id="assetOutputName" value="output" placeholder="output"></div>
-                <div><label style="font-size:0.65rem;">Etiqueta visible</label><input id="assetOutputLabel" value="Score" placeholder="Score"></div>
-            </div>
-            <span class="hint">Rango recomendado: 0 a 100 (min: <input type="number" id="assetOutputMin" value="0" style="width:60px;display:inline;">, max: <input type="number" id="assetOutputMax" value="100" style="width:60px;display:inline;">)</span>
-        </div>
-        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.75rem;">
-            <button class="btn" onclick="closeModal('assetModal')">Cancelar</button>
-            <button class="btn btn-primary" onclick="saveAsset()">Guardar Activo</button>
-        </div>
-    </div>
-</div>
+
 
 <div class="modal-overlay" id="sensorModal">
     <div class="modal" style="max-width:550px;">
         <h3 id="sensorModalTitle">Nuevo Sensor</h3>
         <div class="section-desc" style="margin-bottom:0.75rem;">
-            Un sensor mide una variable física del activo. Las <strong>funciones de membresía</strong> definen cómo se clasifican sus valores en términos difusos (bajo, medio, alto, etc.).
+            Un sensor mide una variable física del activo. Las <strong>funciones de pertenencia</strong> definen cómo se clasifican sus valores en términos difusos (bajo, medio, alto, etc.).
         </div>
         <input type="hidden" id="sensorId" value="">
 
         <div class="form-row">
             <div class="form-group">
                 <label>Nombre interno <span class="help-icon" title="Identificador usado en las reglas (sin espacios)">?</span></label>
-                <input id="sensorName" placeholder="Ej: pressure, vibration, temperature">
+                <input id="sensorName" placeholder="Ej: vibration, temperature, motor_current">
             </div>
             <div class="form-group">
                 <label>Etiqueta visible <span class="help-icon" title="Nombre que se muestra en el dashboard">?</span></label>
@@ -327,12 +288,9 @@
         </div>
 
         <div class="form-group">
-            <label>Términos Difusos (Funciones de Membresía)</label>
+            <label>Términos Difusos</label>
             <div style="font-size:0.72rem;color:#64748b;margin-bottom:0.3rem;">
-                Cada término es una categoría (ej: "bajo", "medio", "alto"). Los parámetros definen la forma de la curva:<br>
-                <strong>trimf(a,b,c)</strong> = triangular: en <strong>a</strong> empieza, en <strong>b</strong> está al 100%, en <strong>c</strong> termina.<br>
-                <strong>trapmf(a,b,c,d)</strong> = trapezoidal: plano entre <strong>b</strong> y <strong>c</strong>.<br>
-                Ejemplo para sensor de 0 a 10: <code>bajo: trimf(0,0,4)</code>, <code>medio: trimf(2,5,8)</code>, <code>alto: trimf(6,10,10)</code>
+                Cada término es una categoría (ej: "bajo", "medio", "alto"). En <strong>centro</strong> indique el valor del sensor donde ese término es 100% cierto. Si lo deja vacío, se distribuye automáticamente.
             </div>
             <div id="mfList"></div>
             <button class="btn btn-sm" onclick="addMF()" style="margin-top:0.3rem;">+ Agregar término</button>
@@ -342,6 +300,7 @@
             <button class="btn" onclick="closeModal('sensorModal')">Cancelar</button>
             <button class="btn btn-primary" onclick="saveSensor()">Guardar Sensor</button>
         </div>
+    </div>
     </div>
 </div>
 
@@ -369,6 +328,9 @@ function switchTab(tab) {
     document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tab}`));
     renderHelp(tab);
+    if (tab === 'membership') {
+        setTimeout(renderMembership, 50);
+    }
 }
 
 function renderHelp(tab) {
@@ -382,46 +344,109 @@ function renderHelp(tab) {
         `,
         sensors: `
             <div class="tip"><strong>¿Qué es un sensor?</strong><span>Mide una variable física: vibración, temperatura, voltaje, etc. Cada sensor tiene un RANGO (mínimo-máximo) y TÉRMINOS DIFUSOS que clasifican sus valores.</span></div>
-            <div class="tip"><strong>Funciones de Membresía</strong><span>Definen cómo se clasifica un valor. Ej: para vibración (0-10):<br><code>bajo: trimf(0,0,4)</code> → valores de 0 a 4 son "bajo"<br><code>medio: trimf(2,5,8)</code> → de 2 a 8<br><code>alto: trimf(6,10,10)</code> → de 6 a 10</span></div>
-            <div class="tip"><strong>Tipos de función</strong><span><code>trimf(a,b,c)</code> = triangular. <code>trapmf(a,b,c,d)</code> = trapezoidal (plano entre b y c). <code>gaussmf(m,s)</code> = campana (m=media, s=desviación).</span></div>
+            <div class="tip"><strong>Funciones de Pertenencia</strong><span>Son las curvas que clasifican los valores del sensor en categorías (bajo, medio, alto). Se generan automáticamente según los términos que defina y el rango del sensor. No necesita configurar parámetros manualmente.</span></div>
+            <div class="tip"><strong>Términos difusos</strong><span>Son las categorías que usa para clasificar: "bajo", "normal", "alto", "crítico", etc. Para cada término indique el <strong>centro</strong>: el valor del sensor donde ese término es 100% cierto. El sistema calcula automáticamente las transiciones entre términos.</span></div>
         `,
         membership: `
             <div class="tip"><strong>¿Qué muestra esta gráfica?</strong><span>La curva de cada término difuso. El eje X es el valor del sensor, el eje Y es el GRADO DE PERTENENCIA (0 a 1). Donde las curvas se cruzan, hay transición entre categorías.</span></div>
             <div class="tip"><strong>¿Cómo interpretarla?</strong><span>Para un valor de vibración=5, si la curva "medio" está en 0.8 y "alto" en 0.2, significa que 5 es 80% medio y 20% alto. Ambas pueden ser ciertas parcialmente.</span></div>
             <div class="tip"><strong>Pruebe valores</strong><span>Ingrese un valor en "Valor actual" para ver en qué términos cae y con qué intensidad. Esto le ayuda a diseñar mejores reglas.</span></div>
+            <div class="tip"><strong>Función de Pertenencia</strong><span>También llamada "función de membresía" en la literatura. Es la curva que asigna a cada valor del sensor un grado entre 0 y 1 para cada categoría (bajo, medio, alto, etc.).</span></div>
         `,
         export: `
             <div class="tip"><strong>Reporte de Estado</strong><span>Descarga un archivo de texto con el estado actual de todos los activos, las reglas activas y las recomendaciones.</span></div>
             <div class="tip"><strong>Exportar Configuración</strong><span>Descarga un archivo JSON con todas las reglas, sensores y activos. Puede usarlo como respaldo.</span></div>
         `,
+        users: `
+            <div class="tip"><strong>Roles del sistema</strong><span><strong>Administrador</strong>: acceso total, crea cualquier usuario. <strong>Supervisor</strong>: administra su condominio, crea técnicos. <strong>Técnico</strong>: solo ingresa lecturas de campo.</span></div>
+            <div class="tip"><strong>Crear usuario</strong><span>Dé clic en "+ Nuevo", ingrese nombre, contraseña, rol y condominio (si aplica). Los supervisores solo pueden crear técnicos en su condominio.</span></div>
+        `,
     };
     panel.innerHTML = tips[tab] || tips.rules;
 }
 
-// --- Assets ---
-async function loadAssets() {
-    const r = await fetch('/api/assets');
-    currentAssets = await r.json();
-    const list = document.getElementById('assetList');
-    list.innerHTML = currentAssets.map(a =>
-        `<div class="asset-item ${a.id === selectedAssetId ? 'active' : ''}" onclick="selectAsset(${a.id})">
-            <span>${a.label}</span>
-            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteAsset(${a.id})" style="padding:0.15rem 0.4rem;font-size:0.7rem;" title="Eliminar activo">×</button>
-        </div>`
-    ).join('');
-    if (!selectedAssetId && currentAssets.length > 0) selectAsset(currentAssets[0].id);
+// --- Path selector ---
+let _hierarchyData = [];
+let _assetPathMap = {};
+
+async function loadPathSelectors() {
+    const r = await fetch('/api/hierarchy');
+    const data = await r.json();
+    _hierarchyData = data;
+    _assetPathMap = {};
+    currentAssets = [];
+    for (const c of data) {
+        for (const b of c.buildings) {
+            for (const r of b.rooms) {
+                for (const a of (r.assets || [])) {
+                    _assetPathMap[a.id] = `${c.name} → ${b.name} → ${r.name}`;
+                    currentAssets.push(a);
+                }
+            }
+        }
+    }
+    const selCondo = document.getElementById('selCondo');
+    selCondo.innerHTML = '<option value="">Condominio</option>' +
+        data.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    const selAsset = document.getElementById('selAsset');
+    selAsset.innerHTML = '<option value="">Activo</option>';
+    selAsset.disabled = true;
+    document.getElementById('assetPath').textContent = '';
+    // If we have a previously selected asset, restore path
+    if (selectedAssetId && _assetPathMap[selectedAssetId]) {
+        for (const c of data)
+            for (const b of c.buildings)
+                for (const r of b.rooms)
+                    if (r.assets && r.assets.some(a => a.id === selectedAssetId)) {
+                        selCondo.value = c.id;
+                        onCondoChange();
+                        selAsset.value = selectedAssetId;
+                        onAssetChange();
+                        return;
+                    }
+    }
+}
+
+function onCondoChange() {
+    const condoId = parseInt(document.getElementById('selCondo').value);
+    const data = _hierarchyData || [];
+    const condo = data.find(c => c.id === condoId);
+    const selAsset = document.getElementById('selAsset');
+    const pathEl = document.getElementById('assetPath');
+    if (condo) {
+        const condoAssetIds = new Set();
+        for (const b of condo.buildings)
+            for (const r of b.rooms)
+                for (const a of (r.assets || []))
+                    condoAssetIds.add(a.id);
+        const options = currentAssets
+            .filter(a => condoAssetIds.has(a.id))
+            .map(a => `<option value="${a.id}">${a.label}</option>`);
+        selAsset.innerHTML = '<option value="">Activo</option>' + options.join('');
+        selAsset.disabled = false;
+    } else {
+        selAsset.innerHTML = '<option value="">Activo</option>';
+        selAsset.disabled = true;
+    }
+    pathEl.textContent = '';
+}
+
+
+
+function onAssetChange() {
+    const assetId = parseInt(document.getElementById('selAsset').value);
+    document.getElementById('assetPath').textContent = assetId ? (_assetPathMap[assetId] || '') : '';
+    if (assetId) selectAsset(assetId);
 }
 
 async function selectAsset(id) {
     selectedAssetId = id;
-    document.querySelectorAll('.asset-item').forEach(el => {
-        const match = el.textContent.trim() === currentAssets.find(a => a.id === id)?.label;
-        el.classList.toggle('active', parseInt(el.dataset?.id) === id || match);
-    });
     const asset = currentAssets.find(a => a.id === id);
+    // Update selector to match
+    document.getElementById('selAsset').value = id || '';
     document.getElementById('pageTitle').textContent = `Configuración: ${asset?.label || 'Activo'}`;
-    document.getElementById('pageSubtitle').textContent = `Editando reglas, sensores y funciones de membresía para ${asset?.label || 'este activo'}.`;
-    await loadAssetDetail(id);
+    document.getElementById('pageSubtitle').textContent = `Editando reglas, sensores y funciones de pertenencia para ${asset?.label || 'este activo'}.`;
+    if (id) await loadAssetDetail(id);
 }
 
 async function loadAssetDetail(id) {
@@ -434,49 +459,11 @@ async function loadAssetDetail(id) {
     renderMFSensorSelect();
 }
 
-function showAddAssetModal() {
-    document.getElementById('assetModalTitle').textContent = 'Nuevo Activo';
-    document.getElementById('assetId').value = '';
-    ['assetName','assetLabel','assetDesc'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('assetOutputName').value = 'output';
-    document.getElementById('assetOutputLabel').value = 'Score';
-    document.getElementById('assetOutputMin').value = 0;
-    document.getElementById('assetOutputMax').value = 100;
-    openModal('assetModal');
+function toggleHelp() {
+    document.getElementById('helpBox').classList.toggle('show');
 }
 
-async function saveAsset() {
-    const id = document.getElementById('assetId').value;
-    const payload = {
-        name: document.getElementById('assetName').value,
-        label: document.getElementById('assetLabel').value || document.getElementById('assetName').value,
-        description: document.getElementById('assetDesc').value,
-        output_name: document.getElementById('assetOutputName').value || 'output',
-        output_label: document.getElementById('assetOutputLabel').value || 'Score',
-        output_min: parseFloat(document.getElementById('assetOutputMin').value) || 0,
-        output_max: parseFloat(document.getElementById('assetOutputMax').value) || 100,
-    };
-    if (!payload.name) { showToast('El nombre interno es obligatorio', 'warning'); return; }
-    try {
-        if (id) {
-            await fetch(`/api/assets/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            showToast('Activo actualizado', 'success');
-        } else {
-            await fetch('/api/assets', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            showToast('Activo creado', 'success');
-        }
-        closeModal('assetModal');
-        await loadAssets();
-    } catch(e) { showToast('Error al guardar', 'warning'); }
-}
 
-async function deleteAsset(id) {
-    if (!confirm('¿Eliminar este activo? También se eliminarán todas sus reglas y sensores.')) return;
-    await fetch(`/api/assets/${id}`, { method: 'DELETE' });
-    if (selectedAssetId === id) { selectedAssetId = null; document.getElementById('pageTitle').textContent = 'Configure el Sistema Experto'; document.getElementById('pageSubtitle').textContent = 'Seleccione un activo para ver y editar sus reglas.'; }
-    showToast('Activo eliminado', 'info');
-    await loadAssets();
-}
 
 // --- Rules ---
 function renderRules() {
@@ -496,8 +483,8 @@ function renderRules() {
                 <div class="rule-formula">SI ${antText} ENTONCES → <span style="color:${r.consequent.term === 'critical' ? '#8b5cf6' : r.consequent.term === 'high' ? '#dc2626' : r.consequent.term === 'medium' ? '#f59e0b' : r.consequent.term === 'low' ? '#22c55e' : '#94a3b8'};font-weight:600;">${r.consequent.term.toUpperCase()}</span></div>
             </div>
             <div class="actions">
-                <button class="btn btn-sm" onclick="editRule(${r.id})" title="Editar regla">✎</button>
-                <button class="btn btn-sm btn-danger" onclick="deleteRule(${r.id})" title="Eliminar regla">×</button>
+                <button class="btn btn-sm" onclick="editRule(${r.id})" title="Editar regla"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteRule(${r.id})" title="Eliminar regla"><i class="fas fa-trash"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -526,7 +513,7 @@ function editRule(ruleId) {
     document.getElementById('ruleDesc').value = r.description || '';
     document.getElementById('ruleOperator').value = r.operator || 'and';
     document.getElementById('antecedentsList').innerHTML = r.antecedents.map(a =>
-        `<div class="mf-row"><input value="${a.sensor}" placeholder="sensor" style="max-width:110px;" title="Nombre del sensor"><input value="${a.term}" placeholder="término" style="max-width:100px;" title="Término difuso"><button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar condición">×</button></div>`
+        `<div class="mf-row"><input value="${a.sensor}" placeholder="sensor" style="max-width:110px;" title="Nombre del sensor"><input value="${a.term}" placeholder="término" style="max-width:100px;" title="Término difuso">        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar condición"><i class="fas fa-times"></i></button></div>`
     ).join('');
     if (r.antecedents.length === 0) addAntecedent();
     document.getElementById('consequentTerm').value = r.consequent.term || 'medium';
@@ -544,7 +531,7 @@ function addAntecedent() {
         <select style="max-width:130px;" class="ant-sensor" onchange="updateAntTerms(this)"><option value="">-- sensor --</option>${sensors}</select>
         <select style="max-width:110px;" class="ant-term"><option value="">-- término --</option>${termOpts}</select>
         <span style="font-size:0.65rem;color:#64748b;">es</span>
-        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar">×</button>
+        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar"><i class="fas fa-times"></i></button>
     `;
     document.getElementById('antecedentsList').appendChild(div);
 }
@@ -625,7 +612,10 @@ function renderSensors() {
             <td>${s.unit}</td>
             <td>${s.min_val} - ${s.max_val}</td>
             <td>${terms}</td>
-            <td><button class="btn btn-sm btn-danger" onclick="deleteSensor(${s.id})" title="Eliminar sensor">×</button></td>
+            <td>
+                <button class="btn btn-sm" onclick="editSensor(${s.id})" title="Editar sensor"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteSensor(${s.id})" title="Eliminar sensor"><i class="fas fa-trash"></i></button>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -644,17 +634,30 @@ function showAddSensorModal() {
     openModal('sensorModal');
 }
 
-function addMF(term, type, params) {
-    const types = ['trimf','trapmf','gaussmf'];
+function editSensor(sensorId) {
+    if (!selectedAssetId) { showToast('Seleccione un activo primero', 'warning'); return; }
+    const s = currentSensors.find(x => x.id === sensorId);
+    if (!s) return;
+    document.getElementById('sensorModalTitle').textContent = 'Editar Sensor';
+    document.getElementById('sensorId').value = s.id;
+    document.getElementById('sensorName').value = s.name || '';
+    document.getElementById('sensorLabel').value = s.label || '';
+    document.getElementById('sensorUnit').value = s.unit || '';
+    document.getElementById('sensorMin').value = s.min_val ?? 0;
+    document.getElementById('sensorMax').value = s.max_val ?? 100;
+    document.getElementById('mfList').innerHTML = '';
+    (s.mf_config || []).forEach(m => addMF(m.term, m.params?.[1]));
+    if ((s.mf_config || []).length === 0) { addMF(); addMF(); addMF(); }
+    openModal('sensorModal');
+}
+
+function addMF(term, peak) {
     const div = document.createElement('div');
     div.className = 'mf-row';
     div.innerHTML = `
-        <input class="mf-term" value="${term || ''}" placeholder="ej: bajo" style="max-width:80px;font-weight:600;" title="Nombre del término (ej: bajo, medio, alto)">
-        <select class="mf-type" style="max-width:80px;" title="Tipo de función de membresía">
-            ${types.map(t => `<option value="${t}" ${type === t ? 'selected' : ''}>${t}</option>`).join('')}
-        </select>
-        <input class="mf-params" value="${params ? params.join(',') : ''}" placeholder="a,b,c" style="max-width:140px;" title="Parámetros separados por coma. trimf: a,b,c | trapmf: a,b,c,d | gaussmf: media,desviación">
-        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar término">×</button>
+        <input class="mf-term" value="${term || ''}" placeholder="ej: bajo" style="font-weight:600;max-width:100px;" title="Nombre del término (ej: bajo, medio, alto)">
+        <input class="mf-peak" value="${peak !== undefined && peak !== null ? peak : ''}" placeholder="centro" type="number" style="max-width:80px;" title="Valor del sensor donde este término es 100% cierto">
+        <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Eliminar término"><i class="fas fa-times"></i></button>
     `;
     document.getElementById('mfList').appendChild(div);
 }
@@ -662,24 +665,24 @@ function addMF(term, type, params) {
 async function saveSensor() {
     const id = document.getElementById('sensorId').value;
     const mfRows = document.getElementById('mfList').querySelectorAll('.mf-row');
-    const mf_config = [];
+    const termData = [];
     mfRows.forEach(row => {
-        const term = row.querySelector('.mf-term')?.value?.trim();
-        const type = row.querySelector('.mf-type')?.value;
-        const paramsStr = row.querySelector('.mf-params')?.value?.trim();
-        if (term && paramsStr) {
-            const params = paramsStr.split(',').map(Number).filter(n => !isNaN(n));
-            if (params.length >= 2) mf_config.push({ term, type, params });
-        }
+        const name = row.querySelector('.mf-term')?.value?.trim();
+        const peakInput = row.querySelector('.mf-peak');
+        const peak = peakInput ? parseFloat(peakInput.value) : undefined;
+        if (name) termData.push({name, peak: isNaN(peak) ? undefined : peak});
     });
-    if (mf_config.length < 2) { showToast('Se requieren al menos 2 términos (ej: bajo y alto)', 'warning'); return; }
+    if (termData.length < 2) { showToast('Se requieren al menos 2 términos (ej: bajo y alto)', 'warning'); return; }
+    const minVal = parseFloat(document.getElementById('sensorMin').value) || 0;
+    const maxVal = parseFloat(document.getElementById('sensorMax').value) || 100;
+    const mf_config = generateTrimf(termData, minVal, maxVal);
 
     const payload = {
         name: document.getElementById('sensorName').value?.trim(),
         label: document.getElementById('sensorLabel').value?.trim() || document.getElementById('sensorName').value?.trim(),
         unit: document.getElementById('sensorUnit').value?.trim(),
-        min_val: parseFloat(document.getElementById('sensorMin').value) || 0,
-        max_val: parseFloat(document.getElementById('sensorMax').value) || 100,
+        min_val: minVal,
+        max_val: maxVal,
         mf_config: mf_config,
     };
     if (!payload.name) { showToast('El nombre del sensor es obligatorio', 'warning'); return; }
@@ -696,11 +699,42 @@ async function saveSensor() {
     } catch(e) { showToast('Error al guardar', 'warning'); }
 }
 
+function generateTrimf(terms, minVal, maxVal) {
+    const n = terms.length;
+    if (n === 0) return [];
+    const step = n > 1 ? (maxVal - minVal) / (n - 1) : 0;
+    for (let i = 0; i < n; i++) {
+        if (terms[i].peak === undefined || terms[i].peak === null || isNaN(terms[i].peak)) {
+            terms[i].peak = n === 1 ? (minVal + maxVal) / 2 : minVal + i * step;
+        }
+    }
+    if (n === 1) return [{"term": terms[0].name, "type": "trimf", "params": [minVal, terms[0].peak, maxVal]}];
+    const result = [];
+    for (let i = 0; i < n; i++) {
+        const p = terms[i].peak;
+        const a = i === 0 ? minVal : terms[i - 1].peak;
+        const c = i === n - 1 ? maxVal : terms[i + 1].peak;
+        result.push({"term": terms[i].name, "type": "trimf", "params": [a, p, c]});
+    }
+    return result;
+}
+
 async function deleteSensor(sensorId) {
     if (!confirm('¿Eliminar este sensor? Las reglas que lo usen quedarán inválidas.')) return;
     await fetch(`/api/sensors/${sensorId}`, { method: 'DELETE' });
     showToast('Sensor eliminado', 'info');
     await loadAssetDetail(selectedAssetId);
+}
+
+async function resetDefaults() {
+    if (!selectedAssetId) { showToast('Seleccione un activo primero', 'warning'); return; }
+    if (!confirm('¿Restaurar valores por defecto? Se eliminarán todos los sensores, reglas y funciones de pertenencia personalizados para este activo.')) return;
+    try {
+        const r = await fetch(`/api/assets/${selectedAssetId}/reset-defaults`, { method: 'POST' });
+        if (!r.ok) { const e = await r.json(); throw new Error(e.detail || 'Error'); }
+        showToast('Valores por defecto restaurados', 'success');
+        await loadAssetDetail(selectedAssetId);
+    } catch(e) { showToast(e.message, 'warning'); }
 }
 
 // --- Membership Viewer ---
@@ -725,7 +759,7 @@ function renderMembership() {
 
     if (!sensor || !sensor.mf_config || sensor.mf_config.length === 0) {
         canvas.style.display = 'none';
-        legend.innerHTML = '<div style="color:#64748b;font-size:0.8rem;">Este sensor no tiene funciones de membresía configuradas</div>';
+        legend.innerHTML = '<div style="color:#64748b;font-size:0.8rem;">Este sensor no tiene funciones de pertenencia configuradas</div>';
         explanation.innerHTML = '';
         return;
     }
@@ -895,7 +929,7 @@ function renderMembership() {
 
     // Legend
     legend.innerHTML = mfs.map((mf, idx) =>
-        `<div class="mf-legend-item"><span class="swatch" style="background:${MF_COLORS[idx % MF_COLORS.length]}"></span>${mf.term} <span style="color:${isDark ? '#64748b' : '#94a3b8'};font-size:0.65rem;">(${mf.type})</span></div>`
+        `<div class="mf-legend-item"><span class="swatch" style="background:${MF_COLORS[idx % MF_COLORS.length]}"></span>${mf.term}</div>`
     ).join('');
 
     // Explanation
@@ -919,6 +953,7 @@ function exportConfig() {
     showToast('Configuración exportada', 'success');
 }
 
+
 // Re-render membership chart on theme change
 const themeObserver = new MutationObserver(() => {
     if (document.getElementById('mfCanvas').style.display !== 'none') {
@@ -928,7 +963,7 @@ const themeObserver = new MutationObserver(() => {
 themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
 // Init
-loadAssets();
+loadPathSelectors();
 renderHelp('rules');
 </script>
 {% endblock %}
